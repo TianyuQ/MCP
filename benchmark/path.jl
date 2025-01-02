@@ -72,7 +72,7 @@ function benchmark(;
     sparsity_rate = 0.9,
     ip_mcp = nothing,
     path_mcp = nothing,
-    ip_kwargs = (;),
+    ip_kwargs = (; tol = 1e-6),
 )
     rng = Random.MersenneTwister(1)
 
@@ -126,7 +126,8 @@ function benchmark(;
         elapsed_time = @elapsed sol = MixedComplementarityProblems.solve(
             MixedComplementarityProblems.InteriorPoint(),
             ip_mcp,
-            θ,
+            θ;
+            ip_kwargs...
         )
 
         (; elapsed_time, success = sol.status == :solved)
@@ -149,7 +150,10 @@ function summary_statistics(data)
         (; success_rate = fraction_solved(solver_data), runtime_stats(solver_data)...)
     end
 
-    (; ip = accumulate_stats(data.ip_data), path = accumulate_stats(data.path_data))
+    stats = (; ip = accumulate_stats(data.ip_data), path = accumulate_stats(data.path_data))
+    @info "IP runtime is $(100(stats.ip.μ / stats.path.μ)) % that of PATH."
+
+    stats
 end
 
 "Estimate mean and standard deviation of runtimes for all problems."
