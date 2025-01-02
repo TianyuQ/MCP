@@ -150,7 +150,10 @@ function summary_statistics(data)
         (; success_rate = fraction_solved(solver_data), runtime_stats(solver_data)...)
     end
 
-    (; ip = accumulate_stats(data.ip_data), path = accumulate_stats(data.path_data))
+    stats = (; ip = accumulate_stats(data.ip_data), path = accumulate_stats(data.path_data))
+    @info "IP runtime is $(100(stats.ip.μ / stats.path.μ)) % that of PATH."
+
+    stats
 end
 
 "Estimate mean and standard deviation of runtimes for all problems."
