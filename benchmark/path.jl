@@ -72,7 +72,7 @@ function benchmark(;
     sparsity_rate = 0.9,
     ip_mcp = nothing,
     path_mcp = nothing,
-    ip_kwargs = (;),
+    ip_kwargs = (; tol = 1e-6),
 )
     rng = Random.MersenneTwister(1)
 
@@ -126,7 +126,8 @@ function benchmark(;
         elapsed_time = @elapsed sol = MixedComplementarityProblems.solve(
             MixedComplementarityProblems.InteriorPoint(),
             ip_mcp,
-            θ,
+            θ;
+            ip_kwargs...
         )
 
         (; elapsed_time, success = sol.status == :solved)
