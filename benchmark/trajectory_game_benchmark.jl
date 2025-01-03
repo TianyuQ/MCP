@@ -1,5 +1,7 @@
 module TrajectoryGameBenchmarkUtils
 
+using MixedComplementarityProblems: MixedComplementarityProblems
+
 using LazySets: LazySets
 using TrajectoryGamesBase:
     TrajectoryGamesBase,
@@ -31,7 +33,32 @@ include("../examples/lane_change.jl")
 end # module TrajectoryGameBenchmarkUtils
 
 "Generate a random trajectory game, based on the `LaneChange` problem in `examples/`."
-function generate_test_problem(::TrajectoryGameBenchmark; horizon = 10)
+function generate_test_problem(
+    ::TrajectoryGameBenchmark;
+    horizon = 10,
+    height = 50,
+    num_lanes = 2,
+    lane_width = 2,
+)
+    (; environment, lane_centers) = TrajectoryGameBenchmarkUtils.setup_road_environment(;
+        num_lanes,
+        lane_width,
+        height,
+    )
+    game = TrajectoryGameBenchmarkUtils.setup_trajectory_game(; environment)
+
+    # Build a game. Each player has a parameter for lane preference. P1 wants to stay
+    # in the left lane, and P2 wants to move from the right to the left lane.
+    lane_preferences = mortar([[lane_centers[1]], [lane_centers[1]]])
+    parametric_game = TrajectoryGameBenchmarkUtils.(;
+        game,
+        horizon,
+        params_per_player = 1,
+    )
+
+    # Parse problem components.
+
+
     (;
         G,
         H,
@@ -45,7 +72,7 @@ end
 
 "Generate a random parameter vector Θ corresponding to a convex QP."
 function generate_random_parameter(
-    ::QuadraticProgramBenchmark;
+    ::TrajectoryGameBenchmark;
     rng,
     num_primals,
     num_inequalities,

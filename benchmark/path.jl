@@ -20,25 +20,48 @@ function benchmark(
     # Generate corresponding MCPs.
     @info "Generating IP MCP..."
     parameter_dimension = length(first(θs))
-    ip_mcp =
-        !isnothing(ip_mcp) ? ip_mcp :
+    ip_mcp = if !isnothing(ip_mcp)
+        ip_mcp
+    elseif hasproperty(problem, :K)
+        # Generated a callable problem.
         MixedComplementarityProblems.PrimalDualMCP(
-            problem.G,
-            problem.H;
-            problem.unconstrained_dimension,
-            problem.constrained_dimension,
+            problem.K,
+            problem.lower_bounds,
+            problem.upper_bounds;
             parameter_dimension,
         )
+    else
+        # Generated a symbolic problem.
+        MixedComplementarityProblems.PrimalDualMCP(
+            problem.K_symbolic,
+            problem.z_symbolic,
+            problem.θ_symbolic,
+            problem.lower_bounds,
+            problem.upper_bounds,
+        )
+    end
 
     @info "Generating PATH MCP..."
-    path_mcp =
-        !isnothing(path_mcp) ? path_mcp :
+    path_mcp = if !isnothing(path_mcp)
+        path_mcp
+    elseif hasproperty(problem, :K)
+        # Generated a callable problem.
         ParametricMCPs.ParametricMCP(
             problem.K,
             problem.lower_bounds,
             problem.upper_bounds,
             parameter_dimension,
         )
+    else
+        # Generated a symbolic problem.
+        ParametricMCPs.ParametricMCP(
+            problem.K_symbolic,
+            problem.z_symbolic,
+            problem.θ_symbolic,
+            problem.lower_bounds,
+            problem.upper_bounds
+        )
+    end
 
     # Warm up the solvers.
     @info "Warming up IP solver..."

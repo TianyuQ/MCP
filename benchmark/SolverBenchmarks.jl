@@ -15,7 +15,7 @@ struct QuadraticProgramBenchmark <: BenchmarkType end
 struct TrajectoryGameBenchmark <: BenchmarkType end
 
 include("quadratic_program_benchmark.jl")
-#include("trajectory_game_benchmark.jl")
+include("trajectory_game_benchmark.jl")
 include("path.jl")
 
 end # module SolverBenchmarks

@@ -44,15 +44,7 @@ function generate_test_problem(
     lower_bounds = [fill(-Inf, num_primals); fill(0, num_inequalities)]
     upper_bounds = fill(Inf, num_primals + num_inequalities)
 
-    (;
-        G,
-        H,
-        K,
-        unconstrained_dimension,
-        constrained_dimension,
-        lower_bounds,
-        upper_bounds,
-    )
+    (; K, lower_bounds, upper_bounds)
 end
 
 "Generate a random parameter vector Θ corresponding to a convex QP."
