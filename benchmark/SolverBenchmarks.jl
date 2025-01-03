@@ -2,8 +2,8 @@
 module SolverBenchmarks
 
 using MixedComplementarityProblems: MixedComplementarityProblems
-
 using ParametricMCPs: ParametricMCPs
+using BlockArrays: BlockArrays, mortar
 using Random: Random
 using Statistics: Statistics
 using Distributions: Distributions

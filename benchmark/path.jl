@@ -7,12 +7,11 @@ function benchmark(
     path_mcp = nothing,
     ip_kwargs = (; tol = 1e-6),
 )
-    rng = Random.MersenneTwister(1)
-
     # Generate problem and random parameters.
     @info "Generating random problems..."
     problem = generate_test_problem(benchmark_type; problem_kwargs...)
 
+    rng = Random.MersenneTwister(1)
     θs = map(1:num_samples) do _
         generate_random_parameter(benchmark_type; rng, problem_kwargs...)
     end

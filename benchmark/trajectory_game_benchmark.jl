@@ -73,10 +73,15 @@ function generate_random_parameter(
     )
 
     initial_states = mortar([
-        LazySets.sample(environment.set; rng),
-        LazySets.sample(environment.set; rng),
+        [LazySets.sample(environment.set; rng); zeros(2)],
+        [LazySets.sample(environment.set; rng); zeros(2)],
     ])
-    horizontal_references = mortar([rand(rng, lane_centers), rand(rng, lane_centers)])
+    horizontal_references = mortar([[rand(rng, lane_centers)], [rand(rng, lane_centers)]])
 
-    TrajectoryGameBenchmarkUtils.pack_parameters(initial_states, horizontal_references)
+    collect(
+        TrajectoryGameBenchmarkUtils.pack_parameters(
+            initial_states,
+            horizontal_references,
+        ),
+    )
 end
