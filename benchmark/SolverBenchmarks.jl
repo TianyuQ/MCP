@@ -7,6 +7,7 @@ using ParametricMCPs: ParametricMCPs
 using Random: Random
 using Statistics: Statistics
 using Distributions: Distributions
+using LazySets: LazySets
 using PATHSolver: PATHSolver
 using ProgressMeter: @showprogress
 

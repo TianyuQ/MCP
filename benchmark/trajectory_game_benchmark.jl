@@ -40,7 +40,7 @@ function generate_test_problem(
     num_lanes = 2,
     lane_width = 2,
 )
-    (; environment, lane_centers) = TrajectoryGameBenchmarkUtils.setup_road_environment(;
+    (; environment) = TrajectoryGameBenchmarkUtils.setup_road_environment(;
         num_lanes,
         lane_width,
         height,
@@ -49,65 +49,34 @@ function generate_test_problem(
 
     # Build a game. Each player has a parameter for lane preference. P1 wants to stay
     # in the left lane, and P2 wants to move from the right to the left lane.
-    lane_preferences = mortar([[lane_centers[1]], [lane_centers[1]]])
-    parametric_game = TrajectoryGameBenchmarkUtils.(;
+    TrajectoryGameBenchmarkUtils.build_mcp_components(;
         game,
         horizon,
         params_per_player = 1,
     )
-
-    # Parse problem components.
-
-
-    (;
-        G,
-        H,
-        K,
-        unconstrained_dimension,
-        constrained_dimension,
-        lower_bounds,
-        upper_bounds,
-    )
 end
 
-"Generate a random parameter vector Θ corresponding to a convex QP."
+""" Generate a random parameter vector Θ corresponding to an initial state and
+horizontal tracking reference per player.
+"""
 function generate_random_parameter(
     ::TrajectoryGameBenchmark;
     rng,
-    num_primals,
-    num_inequalities,
-    sparsity_rate,
+    num_lanes = 2,
+    lane_width = 2,
+    height = 50,
 )
-    bernoulli = Distributions.Bernoulli(1 - sparsity_rate)
-
-    M = let
-        P =
-            randn(rng, num_primals, num_primals) .*
-            rand(rng, bernoulli, num_primals, num_primals)
-        P' * P
-    end
-
-    A =
-        randn(rng, num_inequalities, num_primals) .*
-        rand(rng, bernoulli, num_inequalities, num_primals)
-    b = randn(rng, num_inequalities)
-    ϕ = randn(rng, num_primals)
-
-    [reshape(M, length(M)); reshape(A, length(A)); b; ϕ]
-end
-
-"Unpack a parameter vector θ into the components of a convex QP."
-function unpack_parameters(::QuadraticProgramBenchmark, θ; num_primals, num_inequalities)
-    M = reshape(θ[1:(num_primals^2)], num_primals, num_primals)
-    A = reshape(
-        θ[(num_primals^2 + 1):(num_primals^2 + num_inequalities * num_primals)],
-        num_inequalities,
-        num_primals,
+    (; environment, lane_centers) = TrajectoryGameBenchmarkUtils.setup_road_environment(;
+        num_lanes,
+        lane_width,
+        height,
     )
 
-    b =
-        θ[(num_primals^2 + num_inequalities * num_primals + 1):(num_primals^2 + num_inequalities * (num_primals + 1))]
-    ϕ = θ[(num_primals^2 + num_inequalities * (num_primals + 1) + 1):end]
+    initial_states = mortar([
+        LazySets.sample(environment.set; rng),
+        LazySets.sample(environment.set; rng),
+    ])
+    horizontal_references = mortar([rand(rng, lane_centers), rand(rng, lane_centers)])
 
-    (; M, A, b, ϕ)
+    TrajectoryGameBenchmarkUtils.pack_parameters(initial_states, horizontal_references)
 end
