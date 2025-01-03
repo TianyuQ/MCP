@@ -230,18 +230,3 @@ function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
 
     strategy.receding_horizon_strategy(state, time_along_plan)
 end
-
-"Visualize a strategy `γ` on a makie canvas using the base color `color`."
-function TrajectoryGamesBase.visualize!(
-    canvas,
-    γ::Makie.Observable{<:OpenLoopStrategy};
-    color = :black,
-    weight_offset = 0.0,
-)
-    Makie.series!(canvas, γ; color = [(color, min(1.0, 0.9 + weight_offset))])
-end
-
-function Makie.convert_arguments(::Type{<:Makie.Series}, γ::OpenLoopStrategy)
-    traj_points = map(s -> Makie.Point2f(s[1:2]), γ.xs)
-    ([traj_points],)
-end

@@ -1,6 +1,37 @@
+module TrajectoryGameBenchmarkUtils
+
+using LazySets: LazySets
+using TrajectoryGamesBase:
+    TrajectoryGamesBase,
+    PolygonEnvironment,
+    ProductDynamics,
+    TimeSeparableTrajectoryGameCost,
+    TrajectoryGame,
+    GeneralSumCostStructure,
+    num_players,
+    time_invariant_linear_dynamics,
+    unstack_trajectory,
+    stack_trajectories,
+    state_dim,
+    control_dim,
+    state_bounds,
+    control_bounds,
+    OpenLoopStrategy,
+    JointStrategy,
+    RecedingHorizonStrategy,
+    rollout
+using TrajectoryGamesExamples: planar_double_integrator, animate_sim_steps
+using BlockArrays: mortar, blocks, BlockArray, Block
+using LinearAlgebra: norm_sqr, norm
+using ProgressMeter: ProgressMeter
+
+include("../examples/utils.jl")
+include("../examples/lane_change.jl")
+
+end # module TrajectoryGameBenchmarkUtils
+
 "Generate a random trajectory game, based on the `LaneChange` problem in `examples/`."
 function generate_test_problem(::TrajectoryGameBenchmark; horizon = 10)
-
     (;
         G,
         H,

@@ -2,6 +2,7 @@
 module SolverBenchmarks
 
 using MixedComplementarityProblems: MixedComplementarityProblems
+
 using ParametricMCPs: ParametricMCPs
 using Random: Random
 using Statistics: Statistics
