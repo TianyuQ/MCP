@@ -30,7 +30,7 @@ Keyword arguments:
     - `loosening_rate::Real = 0.5`: the rate at which to loosen the tolerance.
     - `min_stepsize::Real = 1e-2`: the minimum step size for the linesearch.
     - `verbose::Bool = false`: whether to print debug information.
-    - `linear_solve_algorithm::KrylovJL_GMRES()`: the linear solve algorithm to use. Any solver from `LinearSolve.jl` can be used.
+    - `linear_solve_algorithm::LinearSolve.SciMLLinearSolveAlgorithm`: the linear solve algorithm to use. Any solver from `LinearSolve.jl` can be used.
 """
 function solve(
     ::InteriorPoint,
@@ -46,7 +46,7 @@ function solve(
     loosening_rate = 0.5,
     min_stepsize = 1e-2,
     verbose = false,
-    linear_solve_algorithm = KrylovJL_GMRES(),
+    linear_solve_algorithm = UMFPACKFactorization(),
 )
     # Set up common memory.
     ∇F = mcp.∇F_z!.result_buffer
@@ -80,8 +80,8 @@ function solve(
             linsolve.A = ∇F + tol * I
             linsolve.b = -F
             solution = solve!(linsolve)
-            if !SciMLBase.successful_retcode(solution)
-                verbose && @warn "Linear solve failed. Exiting prematurely."
+            if !SciMLBase.successful_retcode(solution) && (solution.retcode !== SciMLBase.ReturnCode.Default)
+                verbose && @warn "Linear solve failed. Exiting prematurely. Return code: $(solution.retcode)"
                 status = :failed
                 break
             end
