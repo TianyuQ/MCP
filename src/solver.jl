@@ -30,7 +30,7 @@ Keyword arguments:
     - `loosening_rate::Real = 0.5`: the rate at which to loosen the tolerance.
     - `min_stepsize::Real = 1e-2`: the minimum step size for the linesearch.
     - `verbose::Bool = false`: whether to print debug information.
-    - `linear_solve_algorithm::UMFPACKFactorization`: the linear solve algorithm to use. Any solver from `LinearSolve.jl` can be used.
+    - `linear_solve_algorithm::LinearSolve.SciMLLinearSolveAlgorithm`: the linear solve algorithm to use. Any solver from `LinearSolve.jl` can be used.
 """
 function solve(
     ::InteriorPoint,
