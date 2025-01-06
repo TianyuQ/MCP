@@ -5,7 +5,7 @@ using LinearAlgebra: LinearAlgebra, I, norm, eigvals
 using BlockArrays: blocks, blocksizes
 using TrajectoryGamesBase: to_blockvector
 using SymbolicTracingUtils: SymbolicTracingUtils as SymbolicTracingUtils
-using LinearSolve: LinearProblem, init, solve!, KrylovJL_GMRES
+using LinearSolve: LinearProblem, init, solve!, KrylovJL_GMRES, UMFPACKFactorization
 using SciMLBase: SciMLBase
 
 include("mcp.jl")
