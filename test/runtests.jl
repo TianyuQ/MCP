@@ -16,7 +16,7 @@ using FiniteDiff: FiniteDiff
     M = [2 1; 1 2]
     A = [1 0; 0 1]
     b = [1; 1]
-    θ = rand(2)
+    θ = [-0.5; 0.5]
 
     G(x, y; θ) = M * x - θ - A' * y
     H(x, y; θ) = A * x - b
