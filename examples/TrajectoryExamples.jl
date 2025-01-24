@@ -60,6 +60,7 @@ function Makie.convert_arguments(::Type{<:Makie.Series}, γ::OpenLoopStrategy)
 end
 
 include("utils.jl")
-include("lane_change.jl")
+# include("lane_change.jl")
+include("lane_change_test.jl")
 
 end # module TrajectoryExamples
