@@ -45,22 +45,22 @@ using LinearAlgebra: norm_sqr, norm
 using ProgressMeter: ProgressMeter
 
 "Visualize a strategy `γ` on a makie canvas using the base color `color`."
-function TrajectoryGamesBase.visualize!(
-    canvas,
-    γ::Makie.Observable{<:OpenLoopStrategy};
-    color = :black,
-    weight_offset = 0.0,
-)
-    Makie.series!(canvas, γ; color = [(color, min(1.0, 0.9 + weight_offset))])
-end
+# function TrajectoryGamesBase.visualize!(
+#     canvas,
+#     γ::Makie.Observable{<:OpenLoopStrategy};
+#     color = :black,
+#     weight_offset = 0.0,
+# )
+#     Makie.series!(canvas, γ; color = [(color, min(1.0, 0.9 + weight_offset))])
+# end
 
-function Makie.convert_arguments(::Type{<:Makie.Series}, γ::OpenLoopStrategy)
-    traj_points = map(s -> Makie.Point2f(s[1:2]), γ.xs)
-    ([traj_points],)
-end
+# function Makie.convert_arguments(::Type{<:Makie.Series}, γ::OpenLoopStrategy)
+#     traj_points = map(s -> Makie.Point2f(s[1:2]), γ.xs)
+#     ([traj_points],)
+# end
 
 include("utils.jl")
-# include("lane_change.jl")
-include("lane_change_test.jl")
+include("lane_change.jl")
+# include("lane_change_test.jl")
 
 end # module TrajectoryExamples

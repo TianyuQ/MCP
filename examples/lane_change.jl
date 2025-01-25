@@ -56,11 +56,11 @@ end
 
 function run_lane_change_example(;
     initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
-    horizon = 10,
+    horizon = 15,
     height = 50.0,
     num_lanes = 2,
     lane_width = 2,
-    num_sim_steps = 150,
+    num_sim_steps = 100,
 )
     (; environment, lane_centers) =
         setup_road_environment(; num_lanes, lane_width, height)
@@ -73,7 +73,7 @@ function run_lane_change_example(;
     parametric_game = build_parametric_game(; game, horizon, params_per_player = 1)
 
     # Simulate the ground truth.
-    turn_length = 3
+    turn_length = 10
     sim_steps = let
         progress = ProgressMeter.Progress(num_sim_steps)
         ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
@@ -94,14 +94,9 @@ function run_lane_change_example(;
         )
     end
 
-    animate_sim_steps(
-        game,
-        sim_steps;
-        live = false,
-        framerate = 20,
-        show_turn = true,
-        xlims = (first(lane_centers) - lane_width, last(lane_centers) + lane_width),
-        ylims = (-1, height + 1),
-        aspect = num_lanes * lane_width / height,
-    )
+    println("Simulation Results:")
+    max_steps = length(sim_steps)
+    println("Step $max_steps:")
+    println(sim_steps[max_steps][100].substrategies[1].xs) 
+
 end
