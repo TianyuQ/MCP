@@ -88,8 +88,8 @@ end
 function run_lane_change_example(;
     # initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
     initial_state = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])]),
-    horizon = 2,
-    num_sim_steps = 3,
+    horizon = 5,
+    num_sim_steps = 1,
 )
     # (; environment, lane_centers) =
     #     setup_road_environment(; num_lanes, lane_width, height)
@@ -130,6 +130,7 @@ function run_lane_change_example(;
     # for step in 1:num_sim_steps
     #     println(sim_steps[max_steps][step].substrategies[1].xs[1]) 
     # end
-    # substrategies[i].xs[j] contains the state of player i's trajectory at time j (j=1,2,...,horizon)
+    # sim_steps[max_steps][k].substrategies[i].xs[j] contains 
+    # the state of player i's trajectory at horizon j (j=1,2,...,horizon) at time k (k=1,2,...,num_sim_steps)
     println(sim_steps[max_steps][end].substrategies[10].xs) 
 end
