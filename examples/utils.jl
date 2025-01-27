@@ -89,7 +89,7 @@ function build_mcp_components(;
     horizon = 10,
     params_per_player = 0, # not including initial state, which is always a param
 )
-    N = 2
+    N = 10
     N == num_players(game) || error("Should have only two players.")
 
     # Construct costs.

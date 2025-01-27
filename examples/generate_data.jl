@@ -1,25 +1,46 @@
-"Utility to create the road environment."
-function setup_road_environment(; lane_width = 2, num_lanes = 2, height = 50)
-    lane_centers = map(lane_idx -> (lane_idx - 0.5) * lane_width, 1:num_lanes)
-    vertices = [
-        [first(lane_centers) - 0.5lane_width, 0],
-        [last(lane_centers) + 0.5lane_width, 0],
-        [last(lane_centers) + 0.5lane_width, height],
-        [first(lane_centers) - 0.5lane_width, height],
-    ]
+using CSV
+using DataFrames
 
-    (; lane_centers, environment = PolygonEnvironment(vertices))
+# Read the CSV file
+file_path = "/home/tq877/Tianyu/player_selection/MCP/scripts/agents_and_goals.csv"  # Replace with your actual file path
+data = CSV.read(file_path, DataFrame)
+
+N = 10
+
+goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
+
+"Utility to create the road environment."
+# function setup_road_environment(; lane_width = 2, num_lanes = 2, height = 50)
+#     lane_centers = map(lane_idx -> (lane_idx - 0.5) * lane_width, 1:num_lanes)
+#     vertices = [
+#         [first(lane_centers) - 0.5lane_width, 0],
+#         [last(lane_centers) + 0.5lane_width, 0],
+#         [last(lane_centers) + 0.5lane_width, height],
+#         [first(lane_centers) - 0.5lane_width, height],
+#     ]
+
+#     (; lane_centers, environment = PolygonEnvironment(vertices))
+# end
+
+function setup_environment(; length)
+    vertices = [
+        [-0.5length, -0.5length],
+        [0.5length, -0.5length],
+        [0.5length, 0.5length],
+        [-0.5length, 0.5length],
+    ]
+    (; environment = PolygonEnvironment(vertices))
 end
 
 "Utility to set up a (two player) trajectory game."
 function setup_trajectory_game(; environment)
     cost = let
-        stage_costs = map(1:2) do ii
+        stage_costs = map(1:N) do ii
             (x, u, t, θi) -> let
-                lane_preference = last(θi)
+                # lane_preference = last(θi)
 
-                (x[Block(ii)][1] - lane_preference)^2 +
-                0.5norm_sqr(x[Block(ii)][3:4] - [0, 2]) +
+                norm_sqr(x[Block(ii)][1:2] - goals[Block(ii)]) +
+                0.5norm_sqr(x[Block(ii)][3:4]) +
                 0.1norm_sqr(u[Block(ii)])
             end
         end
@@ -37,43 +58,52 @@ function setup_trajectory_game(; environment)
     end
 
     function coupling_constraints(xs, us, θ)
+        # mapreduce(vcat, xs) do x
+        #     x1, x2, x3 = blocks(x)
+        #     # Players need to stay at least 2 m away from one another.
+        #     norm_sqr(x1[1:2] - x2[1:2]) - 4
+        # end
+        constraints = []
         mapreduce(vcat, xs) do x
-            x1, x2 = blocks(x)
-
-            # Players need to stay at least 2 m away from one another.
-            norm_sqr(x1[1:2] - x2[1:2]) - 4
+            player_states = [block for block in blocks(x)]
+        #     # Players need to stay at least 2 m away from one another.
+            for i in 1:N-1
+                for j in i+1:N
+                    push!(constraints, norm_sqr(player_states[i][1:2] - player_states[j][1:2]) - 4)
+                end
+            end 
         end
+        return constraints
     end
 
     agent_dynamics = planar_double_integrator(;
         state_bounds = (; lb = [-Inf, -Inf, -10, 0], ub = [Inf, Inf, 10, 10]),
         control_bounds = (; lb = [-5, -5], ub = [3, 3]),
     )
-    dynamics = ProductDynamics([agent_dynamics for _ in 1:2])
+    dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
 
     TrajectoryGame(dynamics, cost, environment, coupling_constraints)
 end
 
 function run_lane_change_example(;
-    initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
-    horizon = 15,
-    height = 50.0,
-    num_lanes = 2,
-    lane_width = 2,
-    num_sim_steps = 100,
+    # initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
+    initial_state = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])]),
+    horizon = 2,
+    num_sim_steps = 3,
 )
-    (; environment, lane_centers) =
-        setup_road_environment(; num_lanes, lane_width, height)
+    # (; environment, lane_centers) =
+    #     setup_road_environment(; num_lanes, lane_width, height)
+    (; environment) = setup_environment(; length = 15)
     game = setup_trajectory_game(; environment)
 
     # Build a game. Each player has a parameter for lane preference.
     # P1 wants to stay in the left lane, and P2 wants to move from the
     # right to the left lane.
-    lane_preferences = mortar([[lane_centers[1]], [lane_centers[1]]])
-    parametric_game = build_parametric_game(; game, horizon, params_per_player = 1)
+    lane_preferences = mortar([[10] for _ in 1:N])
+    parametric_game = build_parametric_game(; game, horizon, params_per_player = 0)
 
     # Simulate the ground truth.
-    turn_length = 10
+    turn_length = 2
     sim_steps = let
         progress = ProgressMeter.Progress(num_sim_steps)
         ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
@@ -97,6 +127,9 @@ function run_lane_change_example(;
     println("Simulation Results:")
     max_steps = length(sim_steps)
     println("Step $max_steps:")
-    println(sim_steps[max_steps][100].substrategies[1].xs[1]) 
-
+    # for step in 1:num_sim_steps
+    #     println(sim_steps[max_steps][step].substrategies[1].xs[1]) 
+    # end
+    # substrategies[i].xs[j] contains the state of player i's trajectory at time j (j=1,2,...,horizon)
+    println(sim_steps[max_steps][end].substrategies[10].xs) 
 end
