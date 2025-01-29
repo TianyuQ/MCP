@@ -7,6 +7,8 @@ function setup_road_environment(; lane_width = 2, num_lanes = 2, height = 50)
         [last(lane_centers) + 0.5lane_width, height],
         [first(lane_centers) - 0.5lane_width, height],
     ]
+    println(lane_centers)
+    println("hello")
 
     (; lane_centers, environment = PolygonEnvironment(vertices))
 end
@@ -16,7 +18,8 @@ function setup_trajectory_game(; environment)
     cost = let
         stage_costs = map(1:2) do ii
             (x, u, t, θi) -> let
-                lane_preference = last(θi)
+            println(θi)
+            lane_preference = last(θi)
 
                 (x[Block(ii)][1] - lane_preference)^2 +
                 0.5norm_sqr(x[Block(ii)][3:4] - [0, 2]) +
@@ -37,16 +40,28 @@ function setup_trajectory_game(; environment)
     end
 
     function coupling_constraints(xs, us, θ)
-        mapreduce(vcat, xs) do x
+        # mapreduce(vcat, xs) do x
+        #     x1, x2 = blocks(x)
+
+        #     # Players need to stay at least 2 m away from one another.
+        #     norm_sqr(x1[1:2] - x2[1:2]) - 4
+        # end
+
+        h =  mapreduce(vcat, xs) do x
             x1, x2 = blocks(x)
 
             # Players need to stay at least 2 m away from one another.
+            # norm_sqr(x1[1:2] - x2[1:2]) + 1
             norm_sqr(x1[1:2] - x2[1:2]) - 4
         end
+    
+        @info h
+
+        h
     end
 
     agent_dynamics = planar_double_integrator(;
-        state_bounds = (; lb = [-Inf, -Inf, -10, 0], ub = [Inf, Inf, 10, 10]),
+        state_bounds = (; lb = [-Inf, -Inf, -5, 0], ub = [Inf, Inf, 5, 5]),
         control_bounds = (; lb = [-5, -5], ub = [3, 3]),
     )
     dynamics = ProductDynamics([agent_dynamics for _ in 1:2])
@@ -70,6 +85,7 @@ function run_lane_change_example(;
     # P1 wants to stay in the left lane, and P2 wants to move from the
     # right to the left lane.
     lane_preferences = mortar([[lane_centers[1]], [lane_centers[1]]])
+    println(lane_preferences)
     parametric_game = build_parametric_game(; game, horizon, params_per_player = 1)
 
     # Simulate the ground truth.

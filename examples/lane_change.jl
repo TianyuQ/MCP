@@ -97,6 +97,7 @@ function run_lane_change_example(;
     println("Simulation Results:")
     max_steps = length(sim_steps)
     println("Step $max_steps:")
-    println(sim_steps[max_steps][100].substrategies[1].xs[1]) 
-
+    for i in 1:10
+        println(sim_steps[max_steps][i].substrategies[1].xs[1]) 
+    end
 end

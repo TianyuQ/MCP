@@ -27,8 +27,12 @@ def generate_agents_and_goals(N, bounds=(-5, 5), min_distance=2, max_velocity=0.
             agent_id = len(agents) + 1
             agents.append([agent_id] + position + velocity)
 
-            # Generate a random goal position
-            goal = [round(random.uniform(bounds[0], bounds[1]), 4) for _ in range(2)]
+    while len(goals) < N:
+        # Generate a random goal position
+        goal = [round(random.uniform(bounds[0], bounds[1]), 4) for _ in range(2)]
+
+        # Ensure it's far enough from existing goals
+        if is_far_enough(goal, goals, min_distance):
             goals.append(goal)
 
     return agents, goals
@@ -46,7 +50,7 @@ if __name__ == "__main__":
     # Parameters
     N = 10  # Number of agents
     bounds = (-5, 5)  # Area bounds
-    min_distance = 2  # Minimum distance between agents
+    min_distance = 2  # Minimum distance between agents and goals
     max_velocity = 0.5  # Maximum magnitude of initial velocity
 
     # Generate agents and goals
