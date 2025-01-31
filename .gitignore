@@ -25,5 +25,4 @@ docs/site/
 # environment.
 Manifest.toml
 
-*.csv
-scripts/*.csv
+data/

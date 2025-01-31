@@ -61,7 +61,8 @@ end
 
 include("utils.jl")
 # include("lane_change.jl")
-include("generate_data.jl")
+# include("generate_data.jl")
+include("game_with_masks.jl")
 # include("lane_change_origin.jl")
 
 end # module TrajectoryExamples

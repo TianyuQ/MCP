@@ -2,10 +2,11 @@ using CSV
 using DataFrames
 
 # Read the CSV file
-file_path = "/home/tq877/Tianyu/player_selection/MCP/scripts/agents_and_goals_0.csv"  # Replace with your actual file path
+file_path = "/home/tq877/Tianyu/player_selection/MCP/scripts/agents_and_goals_1.csv"  # Replace with your actual file path
 data = CSV.read(file_path, DataFrame)
 
 N = 4
+total_steps = 1
 
 goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
 initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
@@ -100,11 +101,11 @@ end
 function run_lane_change_example(;
     # initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0], [-0.2, 0.9, 0.0, 1.0]]),
     initial_state = initial_states,
-    horizon = 3,
-    height = 50.0,
-    num_lanes = 2,
-    lane_width = 2,
-    num_sim_steps = 4,
+    horizon = 10,
+    # height = 50.0,
+    # num_lanes = 2,
+    # lane_width = 2,
+    num_sim_steps = 1,
 )
     (; environment) =
         setup_road_environment(; length = 10)
@@ -142,8 +143,8 @@ function run_lane_change_example(;
     println("Simulation Results:")
     max_steps = length(sim_steps)
     println("Step $max_steps:")
-    for i in 1:4
-        println(sim_steps[max_steps][i].substrategies[1].xs[1]) 
+    for i in 1:total_steps
+        println(sim_steps[max_steps][i].substrategies[1].xs) 
     end
 
     # animate_sim_steps(
