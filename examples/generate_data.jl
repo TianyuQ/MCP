@@ -1,8 +1,9 @@
 using CSV
 using DataFrames
+using Plots
 
 # Read the CSV file
-file_path = "/home/tq877/Tianyu/player_selection/MCP/scripts/agents_and_goals.csv"  # Replace with your actual file path
+file_path = "C:\\Users\\mouan\\MCP\\scripts\\agents_and_goals.csv"  # Replace with your actual file path
 data = CSV.read(file_path, DataFrame)
 
 N = 10
@@ -88,8 +89,8 @@ end
 function run_lane_change_example(;
     # initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
     initial_state = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])]),
-    horizon = 2,
-    num_sim_steps = 3,
+    horizon = 5,
+    num_sim_steps = 100,
 )
     # (; environment, lane_centers) =
     #     setup_road_environment(; num_lanes, lane_width, height)
@@ -127,9 +128,80 @@ function run_lane_change_example(;
     println("Simulation Results:")
     max_steps = length(sim_steps)
     println("Step $max_steps:")
-    # for step in 1:num_sim_steps
-    #     println(sim_steps[max_steps][step].substrategies[1].xs[1]) 
+
+    
+    vis = true
+    goal_xs = goals[1:2:end]
+    goal_ys = goals[2:2:end]
+
+    if vis    
+
+        # Determine the global x and y limits
+        all_x = []
+        all_y = []
+
+        for step in 1:num_sim_steps
+            for i in 1:N
+                pos = sim_steps[max_steps][step].substrategies[i].xs[1]
+                push!(all_x, pos[1])
+                push!(all_y, pos[2])
+            end
+        end
+
+        x_min, x_max = minimum(all_x), maximum(all_x)
+        y_min, y_max = minimum(all_y), maximum(all_y)
+
+        # Create an animation with fixed axes
+        anim = @animate for step in 1:num_sim_steps
+            plt = plot(xlims=(x_min, x_max), ylims=(y_min, y_max), title="Trajectories")
+            scatter!(plt, goal_xs, goal_ys, color=:black, marker=:star, label="Goal", markersize=6) # plot goals
+            # Iterate over all players
+            for i in 1:N
+                x_traj = []
+                y_traj = []
+
+                # Collect trajectory up to the current step
+                for s in 1:step
+                    pos = sim_steps[max_steps][s].substrategies[i].xs[1]
+                    push!(x_traj, pos[1])
+                    push!(y_traj, pos[2])
+                end
+                
+                plot!(plt, x_traj, y_traj, label="Player $i", marker=:circle)
+            end
+        end
+
+        # Save the animation as a GIF
+        gif(anim, "trajectory_animation.gif", fps=20)
+
+    end
+    
+    # this is for an image 
+
+    # # Initialize a plot
+    # plt = plot()
+    
+    # # Iterate over players
+    # for i in 1:N
+    #     x_traj = []  # Store x positions
+    #     y_traj = []  # Store y positions
+        
+    #     # Iterate over simulation steps
+    #     for step in 1:num_sim_steps
+    #         pos = sim_steps[max_steps][step].substrategies[i].xs[1]
+    #         push!(x_traj, pos[1])
+    #         push!(y_traj, pos[2])
+    #     end
+        
+    #     # Plot the trajectory of the player
+    #     plot!(plt, x_traj, y_traj, label="Player $i", marker=:circle)
     # end
-    # substrategies[i].xs[j] contains the state of player i's trajectory at time j (j=1,2,...,horizon)
-    println(sim_steps[max_steps][end].substrategies[10].xs) 
+    
+    # # Show the plot
+    # display(plt)
+    
+
+
+    #substrategies[i].xs[j] contains the state of player i's trajectory at time j (j=1,2,...,horizon)
+    #println(sim_steps[max_steps][end].substrategies[10].xs) 
 end
