@@ -1,6 +1,7 @@
 import json
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import PIL
 N=4
 
 # first import the json file containing relevant players' trajectories
@@ -53,7 +54,7 @@ animate = True
 if animate:
     # Define colors for each player
     colors = {}
-    fig, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(6, 6))
 
     # Store line objects for each player
     lines = {}
@@ -77,9 +78,11 @@ if animate:
         goal_marker, = ax.plot(x_goal, y_goal, '*', color=colors[player], markersize=10, label=f'Player {player} goal')
         goal_markers[player] = goal_marker
 
+    ax.set_aspect("equal", adjustable="box")  # Keeps a square grid
+
     # Set plot limits (adjust based on data range)
-    ax.set_xlim(-3, 3)
-    ax.set_ylim(-3, 3)
+    ax.set_xlim(-3.5, 3.5)
+    ax.set_ylim(-3.5, 3.5)
     ax.set_xlabel("X Position")
     ax.set_ylabel("Y Position")
     ax.set_title("Animated Player Trajectories")
@@ -99,6 +102,7 @@ if animate:
 
     # Create animation
     ani = animation.FuncAnimation(fig, update, frames=max_steps, interval=250, blit=True)
+    ani.save("trajectory_animation.gif", writer="pillow", fps=10)
 
     # Show animation
     plt.show()
