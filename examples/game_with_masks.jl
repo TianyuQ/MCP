@@ -192,9 +192,9 @@ end
 
 function generate_results(;
     N = 4, #number of total players
-    horizon = 10,
+    horizon = 30,
     scenario_num = 100,
-    total_steps = 5,
+    total_steps = 1,
 )
     for scenario_id in 0:scenario_num-1
         println("Scenario $scenario_id")

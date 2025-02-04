@@ -25,4 +25,4 @@ docs/site/
 # environment.
 Manifest.toml
 
-data/
+data*
