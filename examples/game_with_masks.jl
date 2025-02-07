@@ -298,7 +298,7 @@ end
 function generate_results(;
     N = 4, #number of total players
     horizon = 10,
-    scenario_num = 1,
+    scenario_num = 100,
     total_steps = 1,
 )
     for scenario_id in 0:scenario_num-1
@@ -309,19 +309,23 @@ function generate_results(;
         initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
         masks = [
             [1, 0, 0, 0],
-            # [1, 1, 0, 0],
-            # [1, 0, 1, 0],
-            # [1, 0, 0, 1],
-            # [0, 1, 1, 0],
-            # [0, 1, 0, 1],
-            # [0, 0, 1, 1],
-            # [1, 1, 1, 0],
-            # [1, 1, 0, 1],
-            # [1, 0, 1, 1],
-            # [0, 1, 1, 1],
-            # [1, 1, 1, 1],   
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+            [1, 1, 0, 0],
+            [1, 0, 1, 0],
+            [1, 0, 0, 1],
+            [0, 1, 1, 0],
+            [0, 1, 0, 1],
+            [0, 0, 1, 1],
+            [1, 1, 1, 0],
+            [1, 1, 0, 1],
+            [1, 0, 1, 1],
+            [0, 1, 1, 1],
+            [1, 1, 1, 1],
         ]
         for mask in masks
+            println("Mask: $mask")
             run_example(
                 initial_states = initial_states,
                 goals = goals,
