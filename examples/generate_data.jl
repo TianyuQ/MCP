@@ -2,10 +2,10 @@ using CSV
 using DataFrames
 
 # Read the CSV file
-file_path = "/home/tq877/Tianyu/player_selection/MCP/scripts/agents_and_goals_1.csv"  # Replace with your actual file path
+file_path = "/home/tq877/Tianyu/player_selection/MCP/data/scenario_0.csv"  # Replace with your actual file path
 data = CSV.read(file_path, DataFrame)
 
-N = 4
+N = 1
 total_steps = 1
 
 goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
