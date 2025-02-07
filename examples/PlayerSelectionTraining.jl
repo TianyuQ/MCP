@@ -39,9 +39,11 @@ using Statistics
 using Random
 using LinearAlgebra
 using Glob  # For dynamically finding all JSON files
+using BSON  # For saving and loading models
 
 include("utils.jl")
 include("masked_game_solver.jl")
 include("train_mask_only.jl")
+include("test_mask_only.jl")
 
 end # module PlayerSelectionTraining

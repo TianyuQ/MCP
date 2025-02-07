@@ -107,12 +107,12 @@ directory = "/home/tq877/Tianyu/player_selection/MCP/data_bak/"
 dataset = load_all_json_data(directory)
 
 # Initialize DataLoader
-batch_size = 10
+batch_size = 2 #10
 dataloader = DataLoader(dataset, batch_size)
 
 # Optimizer
 opt = ADAM(0.001)
-epochs = 20
+epochs = 2 #20
 
 # Training loop
 for epoch in 1:epochs
@@ -132,3 +132,8 @@ for epoch in 1:epochs
     end
     println("Epoch $epoch, Average Loss: $(total_loss / length(dataloader.dataset))")
 end
+
+# Save the trained model
+# Save model after training
+BSON.bson("trained_model.bson", Dict(:model => model))
+println("Model saved successfully!")
