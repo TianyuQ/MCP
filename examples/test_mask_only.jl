@@ -21,7 +21,7 @@ function test_model(dataset, model)
     predicted_mask = model(input_vec)
 
     # Convert predicted mask to binary
-    bin_mask = Float32.(predicted_mask .>= 0.5) |> cpu
+    bin_mask = Float64.(predicted_mask .>= 0.5) |> cpu
 
     # Run solver with predicted mask
     computed_traj = run_solver(bin_mask, initial_states, goals, N) |> cpu

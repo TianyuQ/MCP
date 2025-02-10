@@ -301,7 +301,7 @@ function generate_results(;
     scenario_num = 100,
     total_steps = 1,
 )
-    for scenario_id in 0:scenario_num-1
+    for scenario_id in 80:scenario_num-1
         println("Scenario $scenario_id")
         file_path = joinpath(dir_path, "scenario_$scenario_id.csv")
         data = CSV.read(file_path, DataFrame)

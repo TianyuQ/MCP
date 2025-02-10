@@ -45,7 +45,7 @@ function solve(
     tightening_rate = 0.1,
     loosening_rate = 0.5,
     min_stepsize = 1e-2,
-    verbose = true,
+    verbose = false,
     linear_solve_algorithm = UMFPACKFactorization(),
 )
     # Set up common memory.

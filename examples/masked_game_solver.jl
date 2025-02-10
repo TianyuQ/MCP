@@ -1,9 +1,3 @@
-# using CSV
-using DataFrames
-# using JSON
-
-# global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_bak"
-
 "Utility to create the road environment."
 function setup_road_environment(; length)
     vertices = [
@@ -15,7 +9,7 @@ function setup_road_environment(; length)
     (; environment = PolygonEnvironment(vertices))
 end
 
-"Utility to set up a (two player) trajectory game."
+"Utility to set up a trajectory game."
 function setup_trajectory_game(; environment, scenario_id = 0, goals, N)
     cost = let
         stage_costs = map(1:N) do ii
@@ -43,7 +37,7 @@ function setup_trajectory_game(; environment, scenario_id = 0, goals, N)
     function coupling_constraints(xs, us, θ)
         mapreduce(vcat, xs) do x
             player_states = blocks(x)  # Extract exactly N player states
-            [1]
+            [ 1 ]
         end
     end
 
@@ -52,6 +46,7 @@ function setup_trajectory_game(; environment, scenario_id = 0, goals, N)
         control_bounds = (; lb = [-3, -3], ub = [3, 3]),
     )
     dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
+
     TrajectoryGame(dynamics, cost, environment, coupling_constraints)
 end
 
@@ -103,7 +98,8 @@ function run_example(;
     scenario_id = 0,
     mask,
 )
-
+    # mask = Int.(mask .>= 0.5)
+    # println(mask)
     results = Dict()
 
     #Optional Game for all the nonchosen players except the ego player
@@ -178,7 +174,7 @@ function run_example(;
         results["Player $i Goal"] = goals[2 * (i - 1) + 1:2 * i]
         results["Player $i Trajectory"] = [sim_steps[max_iteration][step].substrategies[1].xs for step in 1:num_sim_steps]
         results["Player $i Control"] = [sim_steps[max_iteration][step].substrategies[1].us for step in 1:num_sim_steps]
-    else
+    elseif sum(mask) > 1
         #Main Game
         masked_N = sum(mask)
         masked_initial_states = mortar([initial_states[4 * (i - 1) + 1:4 * i] for i in 1:N if mask[i] == 1])
@@ -223,7 +219,5 @@ function run_example(;
             end
         end
     end
-
-    results
-    
+    return results
 end
