@@ -1,14 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import numpy as np
-import random
 import json
 import re
 import glob
 from julia.api import Julia
-jl = Julia(compiled_modules=False)
 
+# Initialize PyJulia
+jl = Julia(compiled_modules=False)
 from julia import Main  # Import Julia after initializing
 Main.eval('import Pkg; Pkg.activate("."); Pkg.instantiate()')  # Activate Julia environment
 
@@ -17,14 +16,14 @@ Main.include("/home/tq877/Tianyu/player_selection/MCP/examples/PlayerSelectionTr
 run_solver = Main.PlayerSelectionTraining.run_solver  # Bind Julia function
 load_all_json_data = Main.PlayerSelectionTraining.load_all_json_data
 
+# -----------------------------------------------------------------------------
 # Hyperparameters
+# -----------------------------------------------------------------------------
 N = 4  # Number of players
 T = 10  # Time steps
 d = 4  # State dimension per player
-input_size = N * T * d + N
-batch_size = 1
-epochs = 1
-learning_rate = 0.001
+input_size = N * T * d + N  # Model input size
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # -----------------------------------------------------------------------------
 # Load Dataset
@@ -40,9 +39,9 @@ def load_dataset(directory):
     - Ego agent indices (all possible ones)
 
     Returns:
-        dataset: List of tuples (trajectories, ego_index, initial_states, goals)
+        dataset: List of tuples (trajectories, ego_index, initial_states, goals, ground_truth_mask)
     """
-    json_files = glob.glob(f"{directory}/simulation_results_2[*.json")  # Adjusted to match format
+    json_files = glob.glob(f"{directory}/simulation_results_0[*.json")  # Adjusted format
     dataset = []
 
     for file in json_files:
@@ -57,7 +56,7 @@ def load_dataset(directory):
         goals = np.concatenate([np.array(data[f"Player {i} Goal"]) for i in range(1, N+1)])
 
         # Extract binary mask from filename using regex
-        match = re.search(r"simulation_results_2\[(.*?)\]", file)
+        match = re.search(r"simulation_results_0\[(.*?)\]", file)
         if match:
             mask_str = match.group(1)  # Extract the contents inside the brackets
             mask_values = list(map(int, mask_str.split(",")))  # Convert to a list of integers
@@ -69,7 +68,7 @@ def load_dataset(directory):
 
             # Append a separate dataset entry for each possible ego index
             for ego_index in active_players:
-                dataset.append((trajectories, ego_index, initial_states, goals))
+                dataset.append((trajectories, ego_index, initial_states, goals, np.array(mask_values)))
         else:
             raise ValueError(f"Could not extract mask from filename: {file}")
 
@@ -78,7 +77,7 @@ def load_dataset(directory):
 print("Loading dataset...")
 directory = "/home/tq877/Tianyu/player_selection/MCP/data_bak/"
 dataset = load_dataset(directory)  # Use the same data loading method as in `train.py`
-print("Dataset loaded successfully. Total samples:", len(dataset))
+print(f"Dataset loaded successfully. Total samples: {len(dataset)}")
 
 # -----------------------------------------------------------------------------
 # Define Model (Matches Training)
@@ -101,7 +100,6 @@ class MaskPredictionModel(nn.Module):
 # Load Trained Model
 # -----------------------------------------------------------------------------
 print("Loading trained model...")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load("trained_model_batch=2_epochs=2_lr=0.001.pth", map_location=device)
 
 # Ensure model architecture matches
@@ -112,100 +110,84 @@ model.eval()  # Set model to evaluation mode
 print("Model loaded successfully!")
 
 # -----------------------------------------------------------------------------
-# Define DataLoader (Same as Training)
-# -----------------------------------------------------------------------------
-class DataLoader:
-    def __init__(self, dataset, batch_size):
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.indices = list(range(len(dataset)))  # Keep the dataset order for testing
-
-    def __iter__(self):
-        for i in range(0, len(self.dataset), self.batch_size):
-            batch = self.dataset[i : i + self.batch_size]
-            batch_inputs = []
-            batch_targets = []
-
-            for sample in batch:
-                trajectories, ego_index, initial_states, goals = sample
-
-                # Prepare input (Same as in training)
-                input_vec = prepare_input(trajectories, ego_index)
-                batch_inputs.append(input_vec)
-
-                # Prepare ground truth (Flatten ground truth trajectories)
-                ground_truth_traj = np.concatenate([trajectories[i].flatten() for i in range(1, N+1)])
-                
-                batch_targets.append(ground_truth_traj)
-
-            yield torch.tensor(np.array(batch_inputs), dtype=torch.float32).to(device), \
-                  torch.tensor(np.array(batch_targets), dtype=torch.float32).to(device)
-
-# -----------------------------------------------------------------------------
 # Prepare Input Function (Matches Training)
 # -----------------------------------------------------------------------------
 def prepare_input(trajectories, ego_index):
+    """
+    Prepare input for the model by flattening all player trajectories and adding a one-hot encoding for ego index.
+    """
     flat_traj = np.concatenate([trajectories[i].flatten() for i in range(1, N+1)])
     ego_onehot = np.zeros(N)
-    ego_onehot[ego_index - 1] = 1.0  # Convert 1-based index to 0-based
+    ego_onehot[ego_index] = 1.0  # Convert 1-based index to 0-based
     return np.concatenate((flat_traj, ego_onehot))
 
 # -----------------------------------------------------------------------------
-# Testing Function
+# Testing Function (Traverse All Trials)
 # -----------------------------------------------------------------------------
-def test_model(dataloader, batch_size, model):
+def test_model(dataset, model):
+    """
+    Traverse all trials in the dataset and evaluate predictions for each trial.
+    """
     total_loss = 0.0
-    num_samples = 0
-    for batch_inputs, batch_targets in dataloader:
-        print(len(batch_inputs))
-        # print(batch_inputs)
+    all_results = []
+
+    for sample in dataset:
+        trajectories, ego_index, initial_states, goals, ground_truth_mask = sample
+
+        # Prepare input vector
+        input_vec = prepare_input(trajectories, ego_index)
+        input_tensor = torch.tensor(input_vec, dtype=torch.float32).to(device)
 
         # Predict mask
         with torch.no_grad():
-            predicted_masks = model(batch_inputs).cpu().numpy()
+            predicted_mask = model(input_tensor).cpu().numpy()
 
-        # print(predicted_masks)
-        # Convert predicted masks to binary
+        # Convert predicted mask to binary
+        bin_mask = (predicted_mask >= 0.5).astype(int).flatten()
 
-        batch_computed_trajs = []
-        for i in range(batch_size):
-            # Extract the correct dataset sample
-            sample_idx = num_samples + i
-            _, _, initial_states, goals = dataset[sample_idx]
+        # Run solver with predicted mask
+        computed_traj = run_solver(bin_mask.tolist(), initial_states.tolist(), goals.tolist(), N, T, 1)
 
-            # Run solver with predicted mask
-            bin_masks = (predicted_masks[i] >= 0.5).astype(int).flatten()
-            # print(bin_masks.tolist())
-            computed_traj = run_solver(bin_masks.tolist(), initial_states.tolist(), goals.tolist(), N, T, 1)
-            
-            batch_computed_trajs.append(computed_traj)
-
-        # Convert computed trajectories to a NumPy array
-        computed_trajs = np.array(batch_computed_trajs)
+        # Convert computed trajectories to NumPy array
+        computed_traj = np.array(computed_traj)
 
         # Compute MSE loss
-        ground_truth_trajs = batch_targets.cpu().numpy()
-        mse_loss = np.mean((computed_trajs - ground_truth_trajs) ** 2)
-        total_loss += mse_loss * batch_size
-        num_samples += batch_size
+        ground_truth_traj = np.concatenate([trajectories[i].flatten() for i in range(1, N+1)])
+        mse_loss = np.mean((computed_traj - ground_truth_traj) ** 2)
+        total_loss += mse_loss
 
-        # Print results for first batch
-        print("\n===== Sample Results =====")
-        print(f"Predicted Masks:\n{predicted_masks}")
-        print(f"Binary Masks:\n{bin_masks}")
-        # print(f"Ground Truth Masks:\n{batch_targets}")
-        # print(f"Ground Truth Trajectories:\n{ground_truth_trajs}")
-        # print(f"Computed Trajectories:\n{computed_trajs}")
-        print(f"Batch MSE Loss: {mse_loss:.4f}")
+        # Store results for analysis
+        all_results.append({
+            "ego_index": ego_index + 1,
+            "ground_truth_mask": ground_truth_mask.tolist(),
+            "predicted_mask": predicted_mask.tolist(),
+            "binary_mask": bin_mask.tolist(),
+            "ground_truth_traj": ground_truth_traj.tolist(),
+            "computed_traj": computed_traj.tolist(),
+            "mse_loss": mse_loss
+        })
+
+        # Print sample results
+        print("\n===== Trial Results =====")
+        print(f"Ego-Agent Index: {ego_index + 1}")
+        print(f"Ground Truth Mask: {ground_truth_mask}")
+        print(f"Predicted Mask: {predicted_mask:.4f}")
+        print(f"Binary Mask (Thresholded at 0.5): {bin_mask}")
+        print(f"MSE Loss: {mse_loss:.4f}")
 
     # Compute final average loss
-    final_loss = total_loss / num_samples
-    return final_loss
+    final_loss = total_loss / len(dataset)
+    return final_loss, all_results
 
 # -----------------------------------------------------------------------------
 # Run Testing
 # -----------------------------------------------------------------------------
-test_dataloader = DataLoader(dataset, batch_size)  # Use batch size = 1 for evaluation
-test_loss = test_model(test_dataloader, batch_size, model)
+test_loss, results = test_model(dataset, model)
 
 print(f"\nTesting complete. Final MSE loss: {test_loss:.6f}")
+
+# Optionally save results for further analysis
+with open("test_results.json", "w") as f:
+    json.dump(results, f, indent=4)
+
+print("Test results saved to 'test_results.json'")
