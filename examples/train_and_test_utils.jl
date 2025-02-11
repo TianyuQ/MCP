@@ -1,4 +1,61 @@
 ###############################################################################
+# Game Setup
+###############################################################################
+"Utility to create the road environment."
+function setup_road_environment(; length)
+    vertices = [
+        [-0.5length, -0.5length],
+        [0.5length, -0.5length],
+        [0.5length, 0.5length],
+        [-0.5length, 0.5length],
+    ]
+    (; environment = PolygonEnvironment(vertices))
+end
+
+"Utility to set up a trajectory game."
+function setup_trajectory_game(; environment, N)
+    cost = let
+        stage_costs = map(1:N) do ii
+            (x, u, t, θi) -> let
+            goal = θi[end-5:end-4]
+            mask = θi[end-3:end]
+                norm_sqr(x[Block(ii)][1:2] - goal) +
+                1norm_sqr(x[Block(ii)][3:4]) + 
+                0.1norm_sqr(u[Block(ii)]) + 
+                sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+            end
+        end
+
+        function reducer(stage_costs)
+            reduce(+, stage_costs) / length(stage_costs)
+        end
+
+        TimeSeparableTrajectoryGameCost(
+            stage_costs,
+            reducer,
+            GeneralSumCostStructure(),
+            1.0,
+        )
+    end
+
+    function coupling_constraints(xs, us, θ)
+        mapreduce(vcat, xs) do x
+            player_states = blocks(x)  # Extract exactly N player states
+            [ 1 ]
+        end
+    end
+
+    agent_dynamics = planar_double_integrator(;
+        state_bounds = (; lb = [-Inf, -Inf, -2, -2], ub = [Inf, Inf, 2, 2]),
+        control_bounds = (; lb = [-3, -3], ub = [3, 3]),
+    )
+    dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
+
+    TrajectoryGame(dynamics, cost, environment, coupling_constraints)
+end
+
+
+###############################################################################
 # Initialize GPU (if available)
 ###############################################################################
 # device = cpu
@@ -44,9 +101,10 @@ end
 ###############################################################################
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
-function run_solver(mask, initial_states, goals, N, horizon, num_sim_steps)
-
+function run_solver(game, mask, initial_states, goals, N, horizon, num_sim_steps)
+    # mask = Int.(mask .>= 0.5)
     results = run_example(
+        game = game,
         initial_states = initial_states,
         goals = goals,
         N = N,
@@ -147,22 +205,22 @@ function Base.iterate(dl::DataLoader, state=1)
 
     batch_inputs = []
     batch_targets = []
+    batch_indices = []  # new vector for indices
 
     for i in state:min(state + dl.batch_size - 1, length(dl.dataset))
         idx = dl.indices[i]
+        push!(batch_indices, idx)  # store the actual dataset index
+        
         trajectories, ego_index, initial_states, goals = dl.dataset[idx]
-
-        input_vec = prepare_input(trajectories, ego_index)  # ✅ No `.device`
+        input_vec = prepare_input(trajectories, ego_index)
         push!(batch_inputs, input_vec)
-
-        # Flatten ground truth trajectories similar to `computed_traj`
+        
         ground_truth_traj = Float64[]
         for j in 1:N
             append!(ground_truth_traj, vec(trajectories[j]))
         end
-
-        push!(batch_targets, ground_truth_traj)  # ✅ No `.device`
+        push!(batch_targets, ground_truth_traj)
     end
 
-    return (hcat(batch_inputs...), hcat(batch_targets...)), state + dl.batch_size
+    return ((hcat(batch_inputs...), hcat(batch_targets...), batch_indices), state + dl.batch_size)
 end
