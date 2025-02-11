@@ -23,7 +23,7 @@ T = 10  # Time steps
 d = 4  # State dimension per player
 input_size = N * T * d + N
 batch_size = 1
-epochs = 1
+epochs = 20
 learning_rate = 0.001
 
 # Define Neural Network Model
@@ -55,7 +55,7 @@ def load_dataset(directory):
     Returns:
         dataset: List of tuples (trajectories, ego_index, initial_states, goals)
     """
-    json_files = glob.glob(f"{directory}/simulation_results_2[*.json")  # Adjusted to match format
+    json_files = glob.glob(f"{directory}/simulation_results_0[*.json")  # Adjusted to match format
     dataset = []
 
     for file in json_files:
@@ -70,7 +70,7 @@ def load_dataset(directory):
         goals = np.concatenate([np.array(data[f"Player {i} Goal"]) for i in range(1, N+1)])
 
         # Extract binary mask from filename using regex
-        match = re.search(r"simulation_results_2\[(.*?)\]", file)
+        match = re.search(r"simulation_results_0\[(.*?)\]", file)
         if match:
             mask_str = match.group(1)  # Extract the contents inside the brackets
             mask_values = list(map(int, mask_str.split(",")))  # Convert to a list of integers
@@ -121,6 +121,7 @@ for epoch in range(epochs):
 
         # Forward pass
         pred_masks = model(input_vec)
+        # bin_mask_tensor = (pred_masks >= 0.5).float()  # Convert to binary mask
         bin_mask = (pred_masks >= 0.5).int().numpy().flatten()  # Convert to binary mask
 
         # Call Julia `run_solver`
@@ -136,7 +137,7 @@ for epoch in range(epochs):
         # Compute loss
         traj_error = criterion(computed_traj, ground_truth_traj)
         mask_reg = torch.sum(pred_masks)
-        loss = traj_error + 0.1 * mask_reg  # Regularization
+        loss = traj_error + 0.01 * mask_reg  # Regularization
 
         # Backpropagation
         optimizer.zero_grad()

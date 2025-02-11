@@ -23,7 +23,7 @@ using TrajectoryGamesBase:
     RecedingHorizonStrategy,
     rollout
 using TrajectoryGamesExamples: planar_double_integrator, animate_sim_steps
-using BlockArrays: mortar, blocks, BlockArray, Block
+# using BlockArrays: mortar, blocks, BlockArray, Block
 using GLMakie: GLMakie
 using Makie: Makie
 using LinearAlgebra: norm_sqr, norm
@@ -32,6 +32,7 @@ using LinearAlgebra: norm_sqr, norm
 ###############################################################################
 # Import Required Packages
 ###############################################################################
+using BlockArrays
 using Flux
 using Flux.Losses: mse
 using Optimisers
@@ -46,11 +47,13 @@ using CUDA
 using BSON
 using CSV
 using DataFrames
+using ForwardDiff
 
 include("utils.jl")
-include("masked_game_solver.jl")
+# include("masked_game_solver.jl")
+include("parametric_masked_game_solver.jl")
 include("train_and_test_utils.jl")
-# include("train_mask_only.jl")
-include("test.jl")
+include("train_mask_only.jl")
+# include("test.jl")
 
 end # module PlayerSelectionTraining

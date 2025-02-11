@@ -1,8 +1,8 @@
 ###############################################################################
 # Initialize GPU (if available)
 ###############################################################################
-device = cpu
-println("Using CPU.")
+# device = cpu
+# println("Using CPU.")
 
 
 ###############################################################################
@@ -54,7 +54,6 @@ function run_solver(mask, initial_states, goals, N, horizon, num_sim_steps)
         num_sim_steps = num_sim_steps,
         mask = mask
     )
-
     computed_traj = Float64[]
     for i in 1:N
         if haskey(results, "Player $i Trajectory")
@@ -86,7 +85,7 @@ end
 # Load JSON Data
 ###############################################################################
 function load_all_json_data(directory::String)
-    json_files = glob("*.json", directory)
+    json_files = glob("simulation_results_0*.json", directory)
     dataset = Vector{Tuple{Dict{Int,Array{Float64,2}}, Int, Array{Float64,1}, Array{Float64,1}}}()  
 
     for (idx, file) in enumerate(json_files)
