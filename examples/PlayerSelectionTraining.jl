@@ -53,7 +53,8 @@ include("utils.jl")
 # include("masked_game_solver.jl")
 include("parametric_masked_game_solver.jl")
 include("train_and_test_utils.jl")
-include("train_mask_only.jl")
+# include("train_mask_only.jl")
+include("train_generative.jl")
 # include("test.jl")
 
 end # module PlayerSelectionTraining

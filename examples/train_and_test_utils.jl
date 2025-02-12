@@ -76,13 +76,25 @@ const masks = [bitstring(i)[end-N+1:end] |> x -> parse.(Int, collect(x)) for i i
 ###############################################################################
 # Neural Network Model
 ###############################################################################
+# function build_model()
+#     model = Chain(
+#         Dense(input_size, 64, relu),
+#         Dense(64, 32, relu),
+#         Dense(32, N),
+#         x -> σ.(x)  # Apply element-wise sigmoid activation
+#     )  # ✅ No more GPU move
+#     return model
+# end
+
+###############################################################################
+# Generative Neural Network Model
+###############################################################################
 function build_model()
     model = Chain(
         Dense(input_size, 64, relu),
         Dense(64, 32, relu),
-        Dense(32, N),
-        x -> σ.(x)  # Apply element-wise sigmoid activation
-    )  # ✅ No more GPU move
+        Dense(32, N, sigmoid)  # Sigmoid outputs probabilities for Bernoulli sampling
+    )
     return model
 end
 
@@ -102,7 +114,6 @@ end
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
 function run_solver(game, mask, initial_states, goals, N, horizon, num_sim_steps)
-    # mask = Int.(mask .>= 0.5)
     results = run_example(
         game = game,
         initial_states = initial_states,
@@ -112,15 +123,16 @@ function run_solver(game, mask, initial_states, goals, N, horizon, num_sim_steps
         num_sim_steps = num_sim_steps,
         mask = mask
     )
-    computed_traj = Float64[]
-    for i in 1:N
-        if haskey(results, "Player $i Trajectory")
-            traj_result = results["Player $i Trajectory"]
-            append!(computed_traj, vcat(traj_result[1]...))
-        end
-    end
-    return computed_traj
+
+    # # Collect trajectories without mutation
+    # computed_traj = [
+    #     vcat(results["Player $i Trajectory"][1]...) for i in 1:N if haskey(results, "Player $i Trajectory")
+    # ]
+    
+    # return vcat(computed_traj...)  # Return as a single array
+    return results  # Return as a single array
 end
+
 
 ###############################################################################
 # Loss Function
