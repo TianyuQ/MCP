@@ -30,7 +30,7 @@ function PrimalDualMCP(
     unconstrained_dimension,
     constrained_dimension,
     parameter_dimension,
-    compute_sensitivities = false,
+    compute_sensitivities = true,
     backend = SymbolicTracingUtils.SymbolicsBackend(),
     backend_options = (;),
 )
@@ -58,7 +58,7 @@ function PrimalDualMCP(
     x_symbolic::Vector{T},
     y_symbolic::Vector{T},
     θ_symbolic::Vector{T};
-    compute_sensitivities = false,
+    compute_sensitivities = true,
     backend_options = (;),
 ) where {T<:Union{SymbolicTracingUtils.FD.Node,SymbolicTracingUtils.Symbolics.Num}}
     # Create symbolic slack variable `s` and parameter `ϵ`.
@@ -157,7 +157,7 @@ function PrimalDualMCP(
     lower_bounds::Vector,
     upper_bounds::Vector;
     parameter_dimension,
-    compute_sensitivities = false,
+    compute_sensitivities = true,
     backend = SymbolicTracingUtils.SymbolicsBackend(),
     backend_options = (;),
 )
@@ -185,7 +185,7 @@ function PrimalDualMCP(
     θ_symbolic::Vector{T},
     lower_bounds::Vector,
     upper_bounds::Vector;
-    compute_sensitivities = false,
+    compute_sensitivities = true,
     backend_options = (;),
 ) where {T<:Union{SymbolicTracingUtils.FD.Node,SymbolicTracingUtils.Symbolics.Num}}
     @assert all(isinf.(upper_bounds)) && all(isinf.(lower_bounds) .|| lower_bounds .== 0)

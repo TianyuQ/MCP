@@ -1,5 +1,6 @@
 function run_example(;
     game,
+    parametric_game,
     initial_states,
     goals,
     N,
@@ -48,7 +49,40 @@ function run_example(;
     else
         # Collect trajectories for all players and flatten into a single long vector
         flattened_traj = flatten_trajectory(sim_steps, max_iteration, num_sim_steps, N)
+        
+        # n = 24  # Number of input variables
+        # m = 32  # Number of output variables
+        # J = zeros(m, n)  # Jacobian matrix
+        # h = 1e-5  # Perturbation size
+        # parameters_perturb = copy(parameters)
+        # for i in 1:n
+        #     parameters_perturb[i] += h  # Slightly increase the i-th element
+        #     # J[:, i] = (f(x_perturb) - f(x)) / h  # Compute finite difference
+        #     preturbed_strategy = WarmStartRecedingHorizonStrategy(;
+        #         game,
+        #         parametric_game,
+        #         turn_length = 3,
+        #         horizon,
+        #         parameters = parameters_perturb,
+        #     )
+        #     sim_steps_perturb = rollout(
+        #         game.dynamics,
+        #         preturbed_strategy,
+        #         initial_states,
+        #         num_sim_steps;
+        #         get_info = (γ, x, t) -> (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
+        #     )
+        #     flattened_traj_perturb = flatten_trajectory(sim_steps_perturb, length(sim_steps_perturb), num_sim_steps, N)
+        #     J[:, i] = (flattened_traj_perturb - flattened_traj) / h  # Compute finite difference
+        # end
+        
+        # println("Jacobian matrix:", J[:, 3:6])
+        
         return flattened_traj  # Return only trajectories as a long vector
+        # return sim_steps
+        # return sum(ground_truth_strategy.last_solution.variables.x)
+        # return ground_truth_strategy.last_solution.variables.x
+        # return ground_truth_strategy
     end
 end
 

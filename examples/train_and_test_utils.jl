@@ -113,9 +113,10 @@ end
 ###############################################################################
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
-function run_solver(game, mask, initial_states, goals, N, horizon, num_sim_steps)
+function run_solver(game, parametric_game, mask, initial_states, goals, N, horizon, num_sim_steps)
     results = run_example(
         game = game,
+        parametric_game = parametric_game,
         initial_states = initial_states,
         goals = goals,
         N = N,

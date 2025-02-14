@@ -1,8 +1,9 @@
 using CSV
 using DataFrames
 
-mask = [1, 0, 1, 1]
-horizon = 10
+# mask = [1, 0, 1, 1]
+mask = [0.9, 0.9, 0.8, 0.1]
+horizon = 2
 num_sim_steps = 1
 N = 4
 
@@ -13,41 +14,49 @@ initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[
 
 (; environment) = setup_road_environment(; length = 7)
 game = setup_trajectory_game(; environment, N = 4)
-parametric_game = build_parametric_game(; game, horizon=10, params_per_player = 6)
+parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
 
 computed_results = run_example(
-    game = game,
-    initial_states = initial_states,
-    goals = goals,
-    N = N,
-    horizon = horizon,
-    num_sim_steps = num_sim_steps,
-    mask = mask,
-    save = false
-)
+        game = game,
+        parametric_game = parametric_game,
+        initial_states = initial_states,
+        goals = goals,
+        N = N,
+        horizon = horizon,
+        num_sim_steps = num_sim_steps,
+        mask = mask,
+        save = false
+    )
 
-# grad = only(Zygote.gradient(f, θ))
+# # println("computed_results", computed_results[1]) 
+# # println(fieldnames(typeof(computed_results)))
+# # println("computed_results", computed_results.last_solution.variables.x)
 
-
-# open("traj_results.json", "w") do io
-#     JSON.print(io, computed_results)
-# end
+# # println(typeof(computed_results.last_solution.variables.x))
+# # println(typeof(mask))
+# # println("computed_results.last_solution.variables.x[1]: ", computed_results.last_solution.variables.x[1])
 
 # function f(mask)
-#     # run_solver(mask, initial_states, goals, N, horizon, num_sim_steps)
-#     t = run_solver(mask, initial_states, goals, N, horizon, num_sim_steps)
-#     # t0 = run_example(
-#     #     initial_states = initial_states,
-#     #     goals = goals,
-#     #     N = N,
-#     #     horizon = horizon,
-#     #     num_sim_steps = num_sim_steps,
-#     #     mask = [1,0,0,1]
-#     # )
-#     # return t["Player 1 Trajectory"][1][1][1]
+#     mask = ForwardDiff.value.(mask)  # ✅ Convert `Dual` numbers to `Float64`
+#     # println("mask: ", mask)
+#     computed_results = run_example(
+#         game = game,
+#         parametric_game = parametric_game,
+#         initial_states = initial_states,
+#         goals = goals,
+#         N = N,
+#         horizon = horizon,
+#         num_sim_steps = num_sim_steps,
+#         mask = mask,  # ✅ Ensure Float64 values are passed
+#         save = false
+#     )
+#     return computed_results.last_solution.variables.x[1]  # Ensure numeric output
 # end
-# test = f(mask)
-# println(test)
-# # grad = Zygote.forwarddiff((mask ->f(mask)), mask)
-# # println(grad)
-# println("done")
+
+# # ✅ Compute Jacobian safely
+# # J = ForwardDiff.jacobian(f, mask)
+# # J = ForwardDiff.gradient(f, mask)
+# # J = only(Zygote.forwarddiff(f, mask))
+
+# # println("Jacobian matrix:")
+# # println(J)

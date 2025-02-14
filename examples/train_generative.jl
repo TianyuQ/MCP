@@ -27,28 +27,26 @@ parametric_game = build_parametric_game(; game, horizon=10, params_per_player = 
 ###############################################################################
 println("Initializing generative model...")
 global model = build_model()  # Declare `model` as global
-optimizer = Flux.Adam(0.001)  # Use Adam optimizer
-epochs = 50  # Number of training epochs
+epochs = 2  # Number of training epochs
 println("Model initialized successfully!")
 
 ###############################################################################
-# Define Bernoulli Loss Function
+# Define Bernoulli Loss Function (Fully Differentiable)
 ###############################################################################
-function loss_fun(model, batch_inputs, batch_targets, pred_probs, computed_trajs)
-    traj_error = mse(computed_trajs, batch_targets)
+function loss_fun(batch_targets, pred_probs, computed_trajs)
+    traj_error = mse(computed_trajs, batch_targets)  # ✅ Fully differentiable
 
-    # Bernoulli loss (regularization)
-    mask_loss = sum(pred_probs)
+    # Bernoulli loss (use pred_probs instead of sampled masks)
+    mask_loss = sum(pred_probs)  # ✅ Fully differentiable
 
-    # return 1000 * (traj_error + 0.001 * bernoulli_loss)
-    return traj_error + 0.001 * mask_loss
+    return traj_error + 0.001 * mask_loss  # ✅ Gradient propagates correctly
 end
 
 ###############################################################################
-# Bernoulli Sampling Function
+# Bernoulli Sampling Function (Non-Differentiable)
 ###############################################################################
 function sample_bernoulli(probabilities)
-    return Float64.(rand.(Bernoulli.(probabilities)))  # Convert samples to binary values
+    return Float64.(rand.(Bernoulli.(probabilities)))  # 🚫 Non-differentiable (Do not use inside loss)
 end
 
 ###############################################################################
@@ -56,9 +54,7 @@ end
 ###############################################################################
 println("Starting training...")
 
-flat_model, reassemble = Flux.destructure(model)  # Extract model parameters as a single vector
 optim_state = Flux.setup(Flux.Adam(0.001), model)
-
 training_losses = Dict()  # Dictionary to store losses per epoch
 
 for epoch in 1:epochs
@@ -66,31 +62,46 @@ for epoch in 1:epochs
     progress = Progress(length(dataloader.dataset), desc="Epoch $epoch ")
 
     for (batch_inputs, batch_targets, batch_indices) in dataloader
-        # 🟢 **Compute `pred_masks` from the model**
-        pred_probs = model(batch_inputs)  # Predict Bernoulli probabilities
-        pred_masks = sample_bernoulli(pred_probs)  # Sample binary masks
-        # 🛑 **Use `pred_masks` inside `run_solver`**
+        # ✅ Compute `pred_probs` from the model
+        pred_probs = model(batch_inputs)  # ✅ Differentiable
+        pred_masks = sample_bernoulli(pred_probs)  # 🚫 Sampling is non-differentiable
+
+        # ✅ Use `pred_masks` inside `run_solver`
         batch_computed_trajs = [run_solver(
-            game, 
-            pred_masks[:, i],  # ✅ Use predicted masks, not random ones
+            game,
+            parametric_game, 
+            pred_probs[:, i],  # ✅ Uses predicted masks
             deepcopy(BlockVector(dataset[idx][3], fill(4, 4))), 
             deepcopy(BlockVector(dataset[idx][4], fill(2, 4))), 
             4, 10, 1
         ) for (i, idx) in enumerate(batch_indices)]
-
+        
         computed_trajs = hcat(batch_computed_trajs...)  # Ensure (160, batch_size)
 
-        # 🟢 Define loss function that does **not** call `run_solver`
-        loss_function = θ -> loss_fun(reassemble(θ), batch_inputs, batch_targets, pred_probs, computed_trajs)
+        # manually compute loss and gradient
+        loss = loss_fun(batch_targets, pred_probs, computed_trajs)  # ✅ Fully differentiable
 
-        # Compute loss and gradients using ForwardDiff
-        loss_val = loss_function(flat_model)  # ✅ Calls loss_fun **once**
-        grads = Zygote.gradient(loss_function, flat_model)  # ✅ No multiple calls to run_solver
-        println(grads)
-        # 🟢 Properly update model parameters
-        Flux.update!(optim_state, flat_model, grads)  # ✅ FIXED
+        grads = zeros(size(pred_probs))
+        for k in 1 : batch_size
+            for j in 1:4
+                pred_probs[j, k] += 1e-5
+                batch_computed_trajs_perturb = [run_solver(
+                    game,
+                    parametric_game, 
+                    pred_probs[:, i],  # ✅ Uses predicted masks
+                    deepcopy(BlockVector(dataset[idx][3], fill(4, 4))), 
+                    deepcopy(BlockVector(dataset[idx][4], fill(2, 4))), 
+                    4, 10, 1
+                ) for (i, idx) in enumerate(batch_indices)]
+                computed_trajs_perturb = hcat(batch_computed_trajs_perturb...)  # Ensure (160, batch_size)
+                loss_perturb = loss_fun(batch_targets, pred_probs, computed_trajs_perturb)
+                grads[j, k] = (loss_perturb - loss) / 1e-5
+            end
+        end
+        println("Gradient: ", grads)  # Debugging: Ensure gradients are non-zero
+        Flux.Optimise.update!(optim_state, pred_probs, grads)  # ✅ Updates `pred_probs` directly
 
-        total_loss += loss_val
+        total_loss += loss  # Compute loss with updated probabilities
     end
     next!(progress)
 
@@ -98,9 +109,6 @@ for epoch in 1:epochs
     training_losses[string(epoch)] = round(avg_loss, digits=6)  # Store epoch loss
     println("Epoch $epoch, Average Loss: ", training_losses[string(epoch)])
 end
-
-# Reconstruct the trained model with updated parameters
-model = reassemble(flat_model)
 
 ###############################################################################
 # Save Trained Generative Model
