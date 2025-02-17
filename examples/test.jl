@@ -16,16 +16,15 @@ initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[
 game = setup_trajectory_game(; environment, N = 4)
 parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
 
-computed_results = run_example(
-        game = game,
-        parametric_game = parametric_game,
-        initial_states = initial_states,
-        goals = goals,
-        N = N,
-        horizon = horizon,
-        num_sim_steps = num_sim_steps,
-        mask = mask,
-        save = false
+computed_results = run_solver(
+        game,
+        parametric_game,
+        mask,
+        initial_states,
+        goals,
+        N,
+        horizon,
+        num_sim_steps,
     )
 
 # # println("computed_results", computed_results[1]) 

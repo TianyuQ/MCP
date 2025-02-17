@@ -99,9 +99,9 @@ function solve(
             end
 
             # Update variables accordingly.
-            @. x += α_s * δx
-            @. s += α_s * δs
-            @. y += α_y * δy
+            x .+= α_s .* δx
+            s .+= α_s .* δs
+            y .+= α_y .* δy
 
             kkt_error = norm(F, Inf)
             inner_iters += 1

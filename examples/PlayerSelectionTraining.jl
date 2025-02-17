@@ -43,7 +43,7 @@ using JSON
 using Random
 using LinearAlgebra
 using Glob
-using CUDA
+# using CUDA
 using BSON
 using CSV
 using DataFrames
@@ -53,7 +53,9 @@ include("utils.jl")
 # include("masked_game_solver.jl")
 include("parametric_masked_game_solver.jl")
 include("train_and_test_utils.jl")
-include("train_generative.jl")
+# include("train_generative.jl")
+# include("test_mask_only.jl")
 # include("test.jl")
+# include("game_with_masks.jl")
 
 end # module PlayerSelectionTraining

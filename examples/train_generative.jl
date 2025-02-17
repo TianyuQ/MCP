@@ -1,33 +1,11 @@
-###############################################################################
-# Required Packages and Helper Functions
-###############################################################################
 using Flux, BlockArrays, BSON, ProgressMeter, Distributions, JSON
-
-###############################################################################
-# Load Dataset
-###############################################################################
-println("Loading dataset...")
-directory = "/home/tq877/Tianyu/player_selection/MCP/data_bak/"
-dataset = load_all_json_data(directory)  # Load all training data
-println("Dataset loaded successfully. Total samples: ", length(dataset))
-
-# Set batch size and initialize DataLoader
-batch_size = 15
-dataloader = DataLoader(dataset, batch_size)
-
-###############################################################################
-# Load Game
-###############################################################################
-(; environment) = setup_road_environment(; length = 7)
-game = setup_trajectory_game(; environment, N = 4)
-parametric_game = build_parametric_game(; game, horizon=10, params_per_player = 6)
 
 ###############################################################################
 # Initialize Generative Model & Optimizer
 ###############################################################################
 println("Initializing generative model...")
 global model = build_model()  # Declare `model` as global
-epochs = 2  # Number of training epochs
+epochs = 5  # Number of training epochs
 println("Model initialized successfully!")
 
 ###############################################################################
@@ -35,11 +13,9 @@ println("Model initialized successfully!")
 ###############################################################################
 function loss_fun(batch_targets, pred_probs, computed_trajs)
     traj_error = mse(computed_trajs, batch_targets)  # ✅ Fully differentiable
-
-    # Bernoulli loss (use pred_probs instead of sampled masks)
     mask_loss = sum(pred_probs)  # ✅ Fully differentiable
-
-    return traj_error + 0.001 * mask_loss  # ✅ Gradient propagates correctly
+    # return 100 * traj_error  # ✅ Gradient propagates correctly
+    return 100 * traj_error + mask_loss # ✅ Gradient propagates correctly
 end
 
 ###############################################################################
@@ -50,12 +26,63 @@ function sample_bernoulli(probabilities)
 end
 
 ###############################################################################
+# **Backpropagate `grads` to Model Parameters**
+###############################################################################
+###############################################################################
+# **Backpropagate `grads` to Model Parameters (Manual Backpropagation)**
+###############################################################################
+function backpropagate_through_model!(model, grads, batch_inputs, lr=0.001)
+    # Dictionary to store gradients of each parameter
+    param_grads = Dict(p => zeros(size(p)) for p in Flux.params(model))
+
+    # Forward pass to store activations
+    activations = [batch_inputs]  # Store input as first activation
+    x = batch_inputs
+    for layer in model.layers
+        x = layer(x)
+        push!(activations, x)
+    end
+
+    # Initialize gradient of output layer (grads is dL/dy_hat)
+    delta = grads  # This is ∂L/∂ŷ, already computed from loss
+
+    # Backpropagate manually through dense layers
+    for layer_idx in length(model.layers):-1:1
+        layer = model[layer_idx]
+
+        if isa(layer, Dense)
+            input_activation = activations[layer_idx]  # Activation from previous layer
+
+            # Compute weight and bias gradients
+            weight_grad = delta * input_activation'  # dL/dW
+            bias_grad = sum(delta, dims=2)  # dL/db
+
+            # Store computed gradients
+            param_grads[layer.weight] .= weight_grad
+            param_grads[layer.bias] .= bias_grad
+
+            # Compute delta for previous layer (dL/dA_prev)
+            delta = (layer.weight' * delta) .* (input_activation .> 0)  # Apply ReLU derivative
+
+        end
+    end
+
+    # Apply gradient updates (Gradient Descent)
+    for (p, grad) in param_grads
+        p .-= lr .* grad  # Update parameter using learning rate
+    end
+end
+
+###############################################################################
+# Training Loop
+###############################################################################
+###############################################################################
 # Training Loop
 ###############################################################################
 println("Starting training...")
 
-optim_state = Flux.setup(Flux.Adam(0.001), model)
-training_losses = Dict()  # Dictionary to store losses per epoch
+training_losses = Dict()  # Store losses per epoch
+learning_rate = 0.001  # Learning rate for manual updates
 
 for epoch in 1:epochs
     total_loss = 0.0
@@ -63,49 +90,54 @@ for epoch in 1:epochs
 
     for (batch_inputs, batch_targets, batch_indices) in dataloader
         # ✅ Compute `pred_probs` from the model
-        pred_probs = model(batch_inputs)  # ✅ Differentiable
-        pred_masks = sample_bernoulli(pred_probs)  # 🚫 Sampling is non-differentiable
+        pred_probs = model(batch_inputs)  # Model forward pass
 
-        # ✅ Use `pred_masks` inside `run_solver`
+        println("Predicted Probabilities: ", pred_probs)  # Debugging
+
+        # ✅ Compute `computed_trajs` using `pred_probs`
         batch_computed_trajs = [run_solver(
             game,
             parametric_game, 
-            pred_probs[:, i],  # ✅ Uses predicted masks
+            pred_probs[:, i],  
             deepcopy(BlockVector(dataset[idx][3], fill(4, 4))), 
             deepcopy(BlockVector(dataset[idx][4], fill(2, 4))), 
-            4, 10, 1
+            4, 30, 1
         ) for (i, idx) in enumerate(batch_indices)]
         
         computed_trajs = hcat(batch_computed_trajs...)  # Ensure (160, batch_size)
 
-        # manually compute loss and gradient
-        loss = loss_fun(batch_targets, pred_probs, computed_trajs)  # ✅ Fully differentiable
+        # ✅ Compute loss
+        loss = loss_fun(batch_targets, pred_probs, computed_trajs)
 
+        # ✅ Compute Gradients (Finite Difference Approximation)
         grads = zeros(size(pred_probs))
-        for k in 1 : batch_size
+        for k in 1:size(pred_probs, 2)
             for j in 1:4
-                pred_probs[j, k] += 1e-5
+                pred_probs[j, k] += 1e-2  # Perturbation
                 batch_computed_trajs_perturb = [run_solver(
                     game,
                     parametric_game, 
-                    pred_probs[:, i],  # ✅ Uses predicted masks
+                    pred_probs[:, i],  
                     deepcopy(BlockVector(dataset[idx][3], fill(4, 4))), 
                     deepcopy(BlockVector(dataset[idx][4], fill(2, 4))), 
-                    4, 10, 1
+                    4, 30, 1
                 ) for (i, idx) in enumerate(batch_indices)]
-                computed_trajs_perturb = hcat(batch_computed_trajs_perturb...)  # Ensure (160, batch_size)
+                computed_trajs_perturb = hcat(batch_computed_trajs_perturb...)
                 loss_perturb = loss_fun(batch_targets, pred_probs, computed_trajs_perturb)
-                grads[j, k] = (loss_perturb - loss) / 1e-5
+                grads[j, k] = (loss_perturb - loss) / 1e-2  # Finite difference gradient
             end
         end
-        println("Gradient: ", grads)  # Debugging: Ensure gradients are non-zero
-        Flux.Optimise.update!(optim_state, pred_probs, grads)  # ✅ Updates `pred_probs` directly
 
-        total_loss += loss  # Compute loss with updated probabilities
+        # println("Gradient: ", grads)  # Debugging
+
+        # ✅ Backpropagate gradients through model
+        backpropagate_through_model!(model, grads, batch_inputs, learning_rate)
+
+        total_loss += loss  # Accumulate loss
     end
     next!(progress)
 
-    avg_loss = total_loss / length(dataloader.dataset)
+    avg_loss = total_loss
     training_losses[string(epoch)] = round(avg_loss, digits=6)  # Store epoch loss
     println("Epoch $epoch, Average Loss: ", training_losses[string(epoch)])
 end
