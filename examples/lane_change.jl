@@ -56,11 +56,11 @@ end
 
 function run_lane_change_example(;
     initial_state = mortar([[1.0, 1.0, 0.0, 1.0], [3.2, 0.9, 0.0, 1.0]]),
-    horizon = 15,
+    horizon = 2,
     height = 50.0,
     num_lanes = 2,
     lane_width = 2,
-    num_sim_steps = 100,
+    num_sim_steps = 1,
 )
     (; environment, lane_centers) =
         setup_road_environment(; num_lanes, lane_width, height)
@@ -73,8 +73,12 @@ function run_lane_change_example(;
     parametric_game = build_parametric_game(; game, horizon, params_per_player = 1)
 
     # Simulate the ground truth.
-    turn_length = 10
-    sim_steps = let
+    turn_length = 2
+
+    grad = []
+
+    # function grad_test(lane_preferences)
+    sim_steps, grad = let
         progress = ProgressMeter.Progress(num_sim_steps)
         ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
             game,
@@ -83,7 +87,7 @@ function run_lane_change_example(;
             horizon,
             parameters = lane_preferences,
         )
-
+        println("marker")
         rollout(
             game.dynamics,
             ground_truth_strategy,
@@ -91,13 +95,30 @@ function run_lane_change_example(;
             num_sim_steps;
             get_info = (γ, x, t) ->
                 (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
-        )
+        ), ground_truth_strategy.gradient
     end
+    println("extracted gradient: ", grad)
+    println(sim_steps.infos[1].substrategies[1].xs)
+    #     # ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
+    #     #         game,
+    #     #         parametric_game,
+    #     #         turn_length,
+    #     #         horizon,
+    #     #         parameters = lane_preferences,
+    #     #     )
 
-    println("Simulation Results:")
-    max_steps = length(sim_steps)
-    println("Step $max_steps:")
-    for i in 1:10
-        println(sim_steps[max_steps][i].substrategies[1].xs[1]) 
-    end
+    #     # println("Simulation Results:")
+    #     # max_steps = length(sim_steps)
+    #     # println("Step $max_steps:")
+    #     # println("Player 1: ", sim_steps.infos[1].substrategies[1].xs[1][1])
+    #     # return println(sim_steps.infos[1].substrategies[1].xs[1][1])
+    #     return "finished"
+    # end
+
+    # grad_test(lane_preferences)
+
+    # grad = only(Zygote.gradient(grad_test, lane_preferences))
+    # println("Gradient: ", grad)
 end
+
+

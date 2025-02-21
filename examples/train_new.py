@@ -8,17 +8,17 @@ import numpy as np
 import re
 from tqdm import tqdm
 
-# from julia.api import Julia
-# from julia import Main  # Now import Julia after initializing
-# jl = Julia(compiled_modules=False)
+from julia.api import Julia
+from julia import Main  # Now import Julia after initializing
+jl = Julia(compiled_modules=False)
 
-# Main.eval('import Pkg; Pkg.activate("."); Pkg.instantiate()')  # Activate Julia environment
+Main.eval('import Pkg; Pkg.activate("."); Pkg.instantiate()')  # Activate Julia environment
 
-# # Initialize PyJulia and import Julia functions
-# Main.include("PlayerSelectionTraining.jl")  # Load the Julia script
-# run_solver = Main.PlayerSelectionTraining.run_solver  # Bind the Julia function to Python
-# game = Main.PlayerSelectionTraining.game
-# parametric_game = Main.PlayerSelectionTraining.parametric_game
+# Initialize PyJulia and import Julia functions
+Main.include("PlayerSelectionTraining.jl")  # Load the Julia script
+run_solver = Main.PlayerSelectionTraining.run_solver  # Bind the Julia function to Python
+game = Main.PlayerSelectionTraining.game
+parametric_game = Main.PlayerSelectionTraining.parametric_game
 
 # Initialize Generative Model & Optimizer
 print("Initializing generative model...")
@@ -29,9 +29,9 @@ horizon = 30
 num_steps = 1
 state_dim = 4
 input_size = player_num * state_dim * horizon + player_num  # Should be 484
-epochs = 3
+epochs = 30
 batch_size = 4
-learning_rate = 0.0001
+learning_rate = 0.001
 
 dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_test"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,7 +53,7 @@ class MaskPredictor(nn.Module):
 input_size = player_num * state_dim * horizon + player_num  # Example input size
 
 model = MaskPredictor(input_size, player_num)
-optimizer = optim.SGD(model.parameters(), lr=0.001)
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 print("Model initialized successfully!")
 
@@ -190,65 +190,67 @@ for epoch in range(1, epochs + 1):
 
     for batch_inputs, batch_targets, batch_indices, batch_initial_states, batch_goals in progress:
         batch_inputs = batch_inputs.to(device)
-        batch_targets = batch_targets.to(device)
+        batch_targets = torch.tensor(batch_targets, dtype=torch.float32).view(-1).to(device)
+        # batch_targets = batch_targets.to(device)
 
         optimizer.zero_grad()
         pred_probs = model(batch_inputs)
         pred_probs_cpu = pred_probs.cpu().detach().numpy()
         print("pred_probs", pred_probs_cpu.round(3))
 
-#         batch_computed_trajs = [
-#             run_solver(
-#                 game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
-#                 player_num, horizon, num_steps
-#             ) for i in range(batch_size)
-#         ]
-#         # print("batch_computed_trajs", batch_computed_trajs)
-#         # print("batch_computed_trajs", len(batch_computed_trajs))
-#         batch_computed_trajs = torch.tensor(batch_computed_trajs, dtype=torch.float32).view(-1).to(device)
+        batch_computed_trajs = [
+            run_solver(
+                game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
+                player_num, horizon, num_steps
+            ) for i in range(batch_size)
+        ]
+        # print("batch_computed_trajs", batch_computed_trajs)
+        # print("batch_computed_trajs", len(batch_computed_trajs))
+        batch_computed_trajs = torch.tensor(batch_computed_trajs, dtype=torch.float32).view(-1).to(device)
 
-#         # computed_trajs = torch.stack(batch_computed_trajs, dim=1)
-#         loss = loss_fun(batch_targets, pred_probs, batch_computed_trajs)
-#         print("loss", loss.cpu().detach().numpy())
+        # computed_trajs = torch.stack(batch_computed_trajs, dim=1)
+        loss = loss_fun(batch_targets, pred_probs, batch_computed_trajs)
+        print("loss", loss.cpu().detach().numpy())
         
-#         # Compute Gradient Manually
-#         grads = torch.zeros(batch_size, player_num).to(device)
+        # Compute Gradient Manually
+        grads = torch.zeros(batch_size, player_num).to(device)
         
-#         for k in range(batch_size):
-#             for j in range(player_num):
-#                 pred_probs_cpu[k][j] += 1e-2  
-#                 batch_computed_trajs_perturb = [
-#                     run_solver(game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
-#                                player_num, horizon, num_steps)
-#                     for i in range(batch_size)
-#                 ]
-#                 batch_computed_trajs_perturb = torch.tensor(batch_computed_trajs_perturb, dtype=torch.float32).view(-1).to(device)
-#                 loss_plus = loss_fun(batch_targets, torch.tensor(pred_probs_cpu, dtype=torch.float32).to(device), batch_computed_trajs_perturb)
-#                 pred_probs_cpu[k][j] -= 2e-2
-#                 batch_computed_trajs_perturb = [
-#                     run_solver(game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
-#                                player_num, horizon, num_steps)
-#                     for i in range(batch_size)
-#                 ]
-#                 batch_computed_trajs_perturb = torch.tensor(batch_computed_trajs_perturb, dtype=torch.float32).view(-1).to(device)
-#                 loss_minus = loss_fun(batch_targets, torch.tensor(pred_probs_cpu, dtype=torch.float32).to(device), batch_computed_trajs_perturb)
-#                 grads[k, j] = (loss_plus - loss_minus) / 2e-2
-#                 pred_probs_cpu[k][j] += 1e-2
-#                 # # print("loss_perturb", loss_perturb)
-#                 # grads[k, j] = (loss_perturb - loss) / 1e-3
-#                 # pred_probs_cpu[k][j] += 1e-3
-#         print("grads", grads)
-#         pred_probs.backward(grads)
-#         optimizer.step()
+        for k in range(batch_size):
+            for j in range(player_num):
+                pred_probs_cpu[k][j] += 1e-3  
+                batch_computed_trajs_perturb = [
+                    run_solver(game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
+                               player_num, horizon, num_steps)
+                    for i in range(batch_size)
+                ]
+                batch_computed_trajs_perturb = torch.tensor(batch_computed_trajs_perturb, dtype=torch.float32).view(-1).to(device)
+                
+                loss_plus = loss_fun(batch_targets, torch.tensor(pred_probs_cpu, dtype=torch.float32).to(device), batch_computed_trajs_perturb)
+                pred_probs_cpu[k][j] -= 2e-3
+                batch_computed_trajs_perturb = [
+                    run_solver(game, parametric_game, pred_probs_cpu[i], batch_initial_states[i], batch_goals[i],
+                               player_num, horizon, num_steps)
+                    for i in range(batch_size)
+                ]
+                batch_computed_trajs_perturb = torch.tensor(batch_computed_trajs_perturb, dtype=torch.float32).view(-1).to(device)
+                loss_minus = loss_fun(batch_targets, torch.tensor(pred_probs_cpu, dtype=torch.float32).to(device), batch_computed_trajs_perturb)
+                grads[k, j] = torch.clamp((loss_plus - loss_minus) / 2e-3, -50, 50)
+                pred_probs_cpu[k][j] += 1e-3
+                # # print("loss_perturb", loss_perturb)
+                # grads[k, j] = (loss_perturb - loss) / 1e-3
+                # pred_probs_cpu[k][j] += 1e-3
+        print("grads", grads)
+        pred_probs.backward(grads)
+        optimizer.step()
         
-#         total_loss += loss.item()
+        total_loss += loss.item()
     
-#     avg_loss = total_loss / len(dataset)
-#     training_losses[str(epoch)] = round(avg_loss, 6)
-#     print(f"Epoch {epoch}, Average Loss: {training_losses[str(epoch)]}")
+    avg_loss = total_loss / len(dataset)
+    training_losses[str(epoch)] = round(avg_loss, 6)
+    print(f"Epoch {epoch}, Average Loss: {training_losses[str(epoch)]}")
 
-# # Save Trained Model
-# torch.save(model.state_dict(), f"trained_model_bs_{batch_size}_ep_{epochs}_hor_{horizon}.pth")
-# with open(f"training_losses_bs_{batch_size}_ep_{epochs}_hor_{horizon}.json", "w") as f:
-#     json.dump(training_losses, f, indent=4)
-# print("Training complete. Model and losses saved.")
+# Save Trained Model
+torch.save(model.state_dict(), f"trained_model_bs_{batch_size}_ep_{epochs}_hor_{horizon}_lr_{learning_rate}.pth")
+with open(f"training_losses_bs_{batch_size}_ep_{epochs}_hor_{horizon}_lr_{learning_rate}.json", "w") as f:
+    json.dump(training_losses, f, indent=4)
+print("Training complete. Model and losses saved.")

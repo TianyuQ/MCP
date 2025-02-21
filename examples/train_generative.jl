@@ -76,6 +76,27 @@ end
 ###############################################################################
 # Training Loop
 ###############################################################################
+
+function compute_loss_and_gradient(batch_inputs, batch_targets, initial_states, goals)
+
+    println("Predicted Probabilities: ", pred_probs)  # Debugging
+
+    # ✅ Compute `computed_trajs` using `pred_probs`
+    loss, gradient = [run_solver(
+        game,
+        parametric_game, 
+        model(batch_inputs)[:, i],  
+        deepcopy(BlockVector(dataset[idx][3], fill(4, 4))), 
+        deepcopy(BlockVector(dataset[idx][4], fill(2, 4))), 
+        4, 30, 1, batch_targets[:, i]
+    ) for (i, idx) in enumerate(batch_indices)]
+    
+    computed_trajs = hcat(batch_computed_trajs...)  # Ensure (160, batch_size)
+
+    # ✅ Compute loss
+    loss = loss_fun(batch_targets, pred_probs, computed_trajs)
+end
+
 ###############################################################################
 # Training Loop
 ###############################################################################

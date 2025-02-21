@@ -2,7 +2,7 @@ using CSV
 using DataFrames
 using JSON
 
-global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data"
+global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_bak_2"
 
 # "Utility to create the road environment."
 # function setup_road_environment(; length)
@@ -281,10 +281,11 @@ function generate_results(;
     scenario_num = 100,
     total_steps = 1,
 )
-    (; environment) = setup_road_environment(; length = 7)
-    game = setup_trajectory_game(; environment, N = 4)
-    parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
-    for scenario_id in 1:scenario_num-1
+    # (; environment) = setup_road_environment(; length = 7)
+    # game = setup_trajectory_game(; environment, N = 4)
+    # parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
+    target = [0 for i in 1:N * horizon * d]
+    for scenario_id in 0:scenario_num-1
         println("Scenario $scenario_id")
         file_path = joinpath(dir_path, "scenario_$scenario_id.csv")
         data = CSV.read(file_path, DataFrame)
@@ -318,6 +319,7 @@ function generate_results(;
                 horizon = horizon,
                 num_sim_steps = total_steps,
                 mask,
+                target,
                 save = true
             )
             result_path = joinpath(dir_path, "simulation_results_$scenario_id$mask.json")

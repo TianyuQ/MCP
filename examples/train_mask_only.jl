@@ -1,86 +1,95 @@
 ###############################################################################
 # Required Packages and Helper Functions
 ###############################################################################
-using Flux, BlockArrays, BSON, ProgressMeter
-
-###############################################################################
-# Load Dataset
-###############################################################################
-println("Loading dataset...")
-directory = "/home/tq877/Tianyu/player_selection/MCP/data_bak/"
-dataset = load_all_json_data(directory)  # Load all training data
-println("Dataset loaded successfully. Total samples: ", length(dataset))
-
-# Set batch size and initialize DataLoader
-batch_size = 15
-dataloader = DataLoader(dataset, batch_size)
-
-###############################################################################
-# Load Game
-###############################################################################
-(; environment) = setup_road_environment(; length = 7)
-game = setup_trajectory_game(; environment, N = 4)
-parametric_game = build_parametric_game(; game, horizon=10, params_per_player = 6)
+using Flux, BlockArrays, BSON, ProgressMeter, Zygote, Optimisers, Statistics
 
 ###############################################################################
 # Initialize Model & Optimizer
 ###############################################################################
 println("Initializing model...")
 global model = build_model()  # Declare `model` as global
-optimizer = Flux.Adam(0.001)  # Use Adam optimizer
-epochs = 2  # Number of training epochs
+opt_state = Flux.setup(Flux.Adam(learning_rate), Flux.trainable(model))
+epochs = 40  # Number of training epochs
 println("Model initialized successfully!")
 
 ###############################################################################
-# Define Loss Function
+# Initialize Mask
 ###############################################################################
-function loss_fun(batch_inputs, batch_targets, batch_indices)
-    pred_masks = model(batch_inputs)  # Get predictions
-
-    batch_computed_trajs = map(1:batch_size) do i
-        idx = batch_indices[i]  # Get actual dataset index
-        block_sizes = fill(4, 4)  # 16-dim initial_states split into 4 blocks
-        initial_states = BlockVector(dataset[idx][3], block_sizes)
-        goals = BlockVector(dataset[idx][4], fill(2, 4))  # 8-dim goals vector split into 4 blocks
-
-        traj = run_solver(game, pred_masks[:, i], deepcopy(initial_states), deepcopy(goals), 4, 10, 1)
-        hcat(traj...)  # Ensure correct format
-    end
-
-    computed_trajs = vcat(batch_computed_trajs...)
-    traj_error = mse(computed_trajs', batch_targets)
-    mask_reg = sum(pred_masks)  # Regularization term
-    return traj_error + 0.1 * mask_reg
-end
+# Initialize the mask outside the training loop
+global mask = ones(Float32, N-1)  # Assuming N is the length of the mask
+println("Initial mask: ", mask)
 
 ###############################################################################
-# Training Loop with Flux Optimizer
+# Training Loop with Mask Update
 ###############################################################################
 println("Starting training...")
-
+training_losses = Dict()
 for epoch in 1:epochs
     println("Epoch $epoch")
     total_loss = 0.0
     progress = Progress(length(dataloader.dataset), desc="Epoch $epoch Training Progress")
 
-    for (batch_inputs, batch_targets, batch_indices) in dataloader
-        # Compute loss and gradients using Flux.train!
-        loss_val, grads = Flux.withgradient(() -> loss_fun(batch_inputs, batch_targets, batch_indices), Flux.params(model))
+    for (batch_inputs, batch_targets, batch_initial_states, batch_goals, batch_indices) in dataloader
+        global model  # Declare global if needed
+        
+        # Use the current mask for the forward pass
+        pred_mask = mask  # Start with the mask from the previous epoch
+        pred_mask = vcat([1], pred_mask)
+        
+        results = run_solver(
+            game, 
+            parametric_game, 
+            batch_targets[:,1], 
+            batch_initial_states[:,1], 
+            batch_goals[:,1], 
+            N, 
+            horizon, 
+            num_sim_steps, 
+            pred_mask
+        )
+        
+        upstream_grads = results[1]
+        loss_val = results[2]
+        println("Loss Values: ", loss_val)
+        total_loss += mean(loss_val)
 
-        # Update model parameters
-        Flux.Optimise.update!(optimizer, Flux.params(model), grads)
+        jacobian = Flux.jacobian(x -> model(x), batch_inputs)
+        gradient = transpose(upstream_grads) * jacobian[1]
 
-        total_loss += loss_val
+        # ---------------------------------------------------------------------
+        # Update the model parameters using Flux's optimizer.
+        # ---------------------------------------------------------------------
+        params = Flux.params(model)
+        for (p, g) in zip(params, gradient)
+            p .-= learning_rate * g
+        end
+        global mask = model(batch_inputs[:,1])  # Update mask for the next epoch
         next!(progress)
+        
     end
 
-    avg_loss = total_loss / length(dataloader.dataset)
-    println("\nEpoch $epoch, Average Loss: $avg_loss")
+    training_losses[epoch] = total_loss
+    println("Epoch $epoch: Loss = $total_loss")
+    
+    ###############################################################################
+    # Mask Update Strategy
+    ###############################################################################
+    # Update the mask based on the loss or other criteria
+    # Example: Update mask as a function of model predictions or gradients
+    
+    # mask = vcat([1], mask)  # Ensure mask shape consistency
+    # println("Updated Mask for Next Epoch: ", mask)
 end
 
 ###############################################################################
-# Save Trained Model
+# Save Trained Generative Model
 ###############################################################################
-println("\nSaving trained model...")
-BSON.bson("trained_model.bson", Dict(:model => model))  # Save the updated model
+println("\nSaving trained generative model...")
+BSON.bson("trained_generative_model_bs_$batch_size _ep_$epochs _lr_$learning_rate.bson", Dict(:model => model))  # Save model
 println("Model saved successfully!")
+
+println("\nSaving training loss records...")
+open("training_losses_bs_$batch_size _ep_$epochs _lr_$learning_rate.json", "w") do f
+    JSON.print(f, sort(collect(training_losses)), 4)  # Sort by epoch and pretty print with indentation of 4 spaces
+end
+println("Training loss saved successfully to training_losses_bs_$batch_size _ep_$epochs _lr_$learning_rate.json!")

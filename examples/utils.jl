@@ -214,23 +214,6 @@ function TrajectoryGamesBase.solve_trajectory_game!(
             x₀ = strategy.last_solution.variables.x,
             y₀ = strategy.last_solution.variables.y,
         )
-        # function f1(parameter_value)
-        #     # parameter_value = ForwardDiff.value.(parameter_value)
-        #     solution = MixedComplementarityProblems.solve(
-        #         parametric_game,
-        #         parameter_value;
-        #         solver_type = MixedComplementarityProblems.InteriorPoint(),
-        #         x₀ = strategy.last_solution.variables.x,
-        #         y₀ = strategy.last_solution.variables.y,
-        #     )
-        #     return solution.variables.x
-        # end
-        # solution = f1(parameter_value)
-        # println("solution: ", solution)
-        
-        # # jacobian = ForwardDiff.jacobian(f1, parameter_value)
-        # # jacobian = Zygote.jacobian(f1, parameter_value)
-        # # println("jacobian: ", jacobian)
     else
         (; initial_state) = unpack_parameters(parameter_value; game.dynamics)
         solution = MixedComplementarityProblems.solve(
@@ -242,25 +225,8 @@ function TrajectoryGamesBase.solve_trajectory_game!(
                 zeros(sum(parametric_game.dims.λ) + parametric_game.dims.λ̃)
             ],
         )
-        # function f2(parameter_value)
-        #     # parameter_value = ForwardDiff.value.(parameter_value)
-        #     solution = MixedComplementarityProblems.solve(
-        #         parametric_game,
-        #         parameter_value;
-        #         solver_type = MixedComplementarityProblems.InteriorPoint(),
-        #         x₀ = [
-        #             pack_trajectory(zero_input_trajectory(; game, horizon, initial_state))
-        #             zeros(sum(parametric_game.dims.λ) + parametric_game.dims.λ̃)
-        #         ],
-        #     )
-        #     return solution.variables.x
-        # end
-        # solution = f2(parameter_value)
-        # println("solution: ", solution)
-        # jacobian = ForwardDiff.jacobian(f2, parameter_value)
-        # # jacobian = Zygote.jacobian(f2, parameter_value)
-        # println("jacobian: ", jacobian)
     end
+    
 
     # Update warm starting info.
     if solution.status == :solved
@@ -268,11 +234,40 @@ function TrajectoryGamesBase.solve_trajectory_game!(
     end
     strategy.solution_status = solution.status
 
-    # Pack solution into OpenLoopStrategy.
-    trajs = unstack_trajectory(unpack_trajectory(mortar(solution.primals); game.dynamics))
-    JointStrategy(map(traj -> OpenLoopStrategy(traj.xs, traj.us), trajs))
+    function gradient_test(parameter_value)
+        if !isnothing(strategy.last_solution) && strategy.last_solution.status == :solved
+            solution = MixedComplementarityProblems.solve(
+                parametric_game,
+                parameter_value;
+                solver_type = MixedComplementarityProblems.InteriorPoint(),
+                x₀ = strategy.last_solution.variables.x,
+                y₀ = strategy.last_solution.variables.y,
+            )
+        else
+            (; initial_state) = unpack_parameters(parameter_value; game.dynamics)
+            solution = MixedComplementarityProblems.solve(
+                parametric_game,
+                parameter_value;
+                solver_type = MixedComplementarityProblems.InteriorPoint(),
+                x₀ = [
+                    pack_trajectory(zero_input_trajectory(; game, horizon, initial_state))
+                    zeros(sum(parametric_game.dims.λ) + parametric_game.dims.λ̃)
+                ],
+            )
+        end
+        return solution.variables.x[1]
+    end
 
-    # return solution.variables.x
+    # println("parameter_value: ", parameter_value)
+    # println("solution: ", solution.variables.x[1])
+    gradient = only(Zygote.gradient(gradient_test, parameter_value))
+    # println("Gradient: ", gradient)
+
+    # # Pack solution into OpenLoopStrategy.
+    trajs = unstack_trajectory(unpack_trajectory(mortar(solution.primals); game.dynamics))
+    JointStrategy(map(traj -> OpenLoopStrategy(traj.xs, traj.us), trajs)), gradient
+
+    # return solution.variables.x, gradient
 end
 
 "Receding horizon strategy that supports warm starting."
@@ -286,6 +281,7 @@ Base.@kwdef mutable struct WarmStartRecedingHorizonStrategy
     last_solution::Any = nothing
     parameters::Any = nothing
     solution_status::Any = nothing
+    gradient::Any = nothing
 end
 
 function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
@@ -294,21 +290,8 @@ function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
     plan_is_still_valid = 1 <= time_along_plan <= strategy.turn_length
 
     update_plan = !plan_exists || !plan_is_still_valid
-    # if update_plan
-    #     strategy.receding_horizon_strategy = TrajectoryGamesBase.solve_trajectory_game!(
-    #         strategy.game,
-    #         strategy.horizon,
-    #         pack_parameters(state, strategy.parameters),
-    #         strategy;
-    #         strategy.parametric_game,
-    #     )
-    #     strategy.time_last_updated = time
-    #     time_along_plan = 1
-    # end
-
-    # strategy.receding_horizon_strategy(state, time_along_plan)
     if update_plan
-        strategy.receding_horizon_strategy = TrajectoryGamesBase.solve_trajectory_game!(
+        strategy.receding_horizon_strategy, strategy.gradient = TrajectoryGamesBase.solve_trajectory_game!(
             strategy.game,
             strategy.horizon,
             pack_parameters(state, strategy.parameters),
@@ -318,52 +301,8 @@ function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
         strategy.time_last_updated = time
         time_along_plan = 1
     end
+    # println("\n gradient: ", strategy.gradient)
+    println("hello")
 
-
-    # function finite_difference_jacobian(f, x; h=1e-5)
-    #     n = length(x)  # Number of input variables
-    #     m = length(f(x))  # Number of output variables
-    #     J = zeros(m, n)  # Jacobian matrix
-        
-    #     for i in 1:n
-    #         x_perturb = copy(x)
-    #         x_perturb[i] += h  # Slightly increase the i-th element
-    #         J[:, i] = (f(x_perturb) - f(x)) / h  # Compute finite difference
-    #     end
-        
-    #     return J
-    # end
-    
-    # function extract_flattened_states(joint_strategy)
-    #     # Extract all OpenLoopStrategy objects
-    #     strategies = [s for joint in joint_strategy for s in joint.strategies]
-    
-    #     # Extract and flatten all state trajectories (`xs`)
-    #     all_xs = vcat([vcat(s.xs...) for s in strategies]...)  # Fully flattened into one vector
-    
-    #     return all_xs  # Single long vector
-    # end
-
-    # n = 6  # Number of input variables
-    # m = 32  # Number of output variables
-    # J = zeros(m, n)  # Jacobian matrix
-    # h = 1e-5  # Perturbation size
-    # parameters_perturb = strategy.parameters
-    # for i in 1:n
-    #     parameters_perturb[i] += h  # Slightly increase the i-th element
-    #     # J[:, i] = (f(x_perturb) - f(x)) / h  # Compute finite difference
-    #     solution_perturb = TrajectoryGamesBase.solve_trajectory_game!(
-    #         strategy.game,
-    #         strategy.horizon,
-    #         pack_parameters(state, parameters_perturb),
-    #         strategy;
-    #         strategy.parametric_game,
-    #     )
-    #     J[:, i] = (extract_flattened_states(solution_perturb) - extract_flattened_states(solution)) / h  # Compute finite difference
-    # end
-
-    # # Example usage:
-    # println("Finite Difference Jacobian:\n", J)
-
-    # return solution
+    strategy.receding_horizon_strategy(state, time_along_plan)
 end

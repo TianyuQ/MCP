@@ -7,8 +7,6 @@ function setup_road_environment(; lane_width = 2, num_lanes = 2, height = 50)
         [last(lane_centers) + 0.5lane_width, height],
         [first(lane_centers) - 0.5lane_width, height],
     ]
-    println(lane_centers)
-    println("hello")
 
     (; lane_centers, environment = PolygonEnvironment(vertices))
 end

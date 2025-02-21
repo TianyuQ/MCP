@@ -7,82 +7,68 @@ function run_example(;
     horizon = 3,
     num_sim_steps,
     mask,
+    target,
     save = false
 )
     results = Dict()
     # Prepare parameters for the game simulation
-    parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], mask) for i in 1:N])
+    parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], i == 1 ? mask : [1, 1, 1, 1]) for i in 1:N])
 
     # Progress bar for simulation steps
     progress = ProgressMeter.Progress(num_sim_steps)
 
     # Define the strategy
-    ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
+    strategy = nothing
+    strategy = WarmStartRecedingHorizonStrategy(;
         game,
         parametric_game,
         turn_length = 3,
         horizon,
         parameters = parameters,
+        target = target,
+        initial_states = initial_states,
     )
 
-    # Run simulation
-    sim_steps = rollout(
+    _, gradient, sim_steps = rollout(
         game.dynamics,
-        ground_truth_strategy,
+        strategy,
         initial_states,
         num_sim_steps;
         get_info = (γ, x, t) -> (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
     )
+    # println("\nsim_steps: ", sim_steps)
+    # println("\ngradient: ", gradient[1][2])
+    # println("\nLoss: ", gradient[1][3])
+    # println("sim_steps: ", sim_steps[2].substrategies[1].xs)
+    # println("sim_steps: ", sim_steps[2].substrategies[1].us)
+    # gradient = parent(sim_steps.us[1])
+    # true_gradient1 = gradient[7:10]
+    # true_gradient2 = gradient[17:20]
+    # true_gradient3 = gradient[27:30]
+    # true_gradient4 = gradient[37:40]
 
-    max_iteration = length(sim_steps)
+    # mean_gradient = (true_gradient1 .+ true_gradient2 .+ true_gradient3 .+ true_gradient4) ./ 4
+
+    # println("sim_steps: ", sim_steps.us)
+    # println("ground_truth_strategy.loss: ", ground_truth_strategy.gradient)
+    # max_iteration = length(sim_steps)
 
     # Add initial states and goals to the results dictionary
     if save
         for player_id in 1:N
             results["Player $player_id Initial State"] = initial_states[4 * (player_id - 1) + 1:4 * player_id]
             results["Player $player_id Goal"] = goals[2 * (player_id - 1) + 1:2 * player_id]
-            results["Player $player_id Trajectory"] = [sim_steps[max_iteration][step].substrategies[player_id].xs for step in 1:num_sim_steps]
-            results["Player $player_id Control"] = [sim_steps[max_iteration][step].substrategies[player_id].us for step in 1:num_sim_steps]
+            results["Player $player_id Trajectory"] = [sim_steps[step].substrategies[player_id].xs for step in 1:num_sim_steps]
+            results["Player $player_id Control"] = [sim_steps[step].substrategies[player_id].us for step in 1:num_sim_steps]
         end
 
         return results
     else
         # Collect trajectories for all players and flatten into a single long vector
-        flattened_traj = flatten_trajectory(sim_steps, max_iteration, num_sim_steps, N)
-        
-        # n = 24  # Number of input variables
-        # m = 32  # Number of output variables
-        # J = zeros(m, n)  # Jacobian matrix
-        # h = 1e-5  # Perturbation size
-        # parameters_perturb = copy(parameters)
-        # for i in 1:n
-        #     parameters_perturb[i] += h  # Slightly increase the i-th element
-        #     # J[:, i] = (f(x_perturb) - f(x)) / h  # Compute finite difference
-        #     preturbed_strategy = WarmStartRecedingHorizonStrategy(;
-        #         game,
-        #         parametric_game,
-        #         turn_length = 3,
-        #         horizon,
-        #         parameters = parameters_perturb,
-        #     )
-        #     sim_steps_perturb = rollout(
-        #         game.dynamics,
-        #         preturbed_strategy,
-        #         initial_states,
-        #         num_sim_steps;
-        #         get_info = (γ, x, t) -> (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
-        #     )
-        #     flattened_traj_perturb = flatten_trajectory(sim_steps_perturb, length(sim_steps_perturb), num_sim_steps, N)
-        #     J[:, i] = (flattened_traj_perturb - flattened_traj) / h  # Compute finite difference
-        # end
-        
-        # println("Jacobian matrix:", J[:, 3:6])
-        
-        return flattened_traj  # Return only trajectories as a long vector
-        # return sim_steps
-        # return sum(ground_truth_strategy.last_solution.variables.x)
-        # return ground_truth_strategy.last_solution.variables.x
-        # return ground_truth_strategy
+        # flattened_traj = flatten_trajectory(sim_steps, max_iteration, num_sim_steps, N)  
+        # return flattened_traj, strategy  # Return only trajectories as a long vector
+        # println("Loss: ", loss)
+        return gradient[1][2], gradient[1][3]
     end
 end
 

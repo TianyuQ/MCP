@@ -1,61 +1,48 @@
 using CSV
 using DataFrames
 
-# mask = [1, 0, 1, 1]
-mask = [0.9, 0.9, 0.8, 0.1]
-horizon = 2
-num_sim_steps = 1
-N = 4
+mask = [1, 1, 1, 1]
+# mask = [0.9, 0.9, 0.8, 0.1]
 
 file_path = "/home/tq877/Tianyu/player_selection/MCP/data_bak/scenario_0.csv"
 data = CSV.read(file_path, DataFrame)
 goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
 initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
 
-(; environment) = setup_road_environment(; length = 7)
-game = setup_trajectory_game(; environment, N = 4)
-parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
+batch_targets = [0 for i in 1:N * horizon * d]
 
-computed_results = run_solver(
-        game,
-        parametric_game,
-        mask,
-        initial_states,
-        goals,
-        N,
-        horizon,
-        num_sim_steps,
-    )
+loss = run_solver(
+    game, 
+    parametric_game, 
+    batch_targets, 
+    initial_states, 
+    goals, 
+    N, 
+    horizon, 
+    num_sim_steps, 
+    mask, 
+)
 
-# # println("computed_results", computed_results[1]) 
-# # println(fieldnames(typeof(computed_results)))
-# # println("computed_results", computed_results.last_solution.variables.x)
+# println("Loss: ", loss)
 
-# # println(typeof(computed_results.last_solution.variables.x))
-# # println(typeof(mask))
-# # println("computed_results.last_solution.variables.x[1]: ", computed_results.last_solution.variables.x[1])
+# parameter_value = pack_parameters(initial_states, mortar([vcat(goals[2 * (i - 1) + 1:2 * i], mask) for i in 1:N]))
 
-# function f(mask)
-#     mask = ForwardDiff.value.(mask)  # ✅ Convert `Dual` numbers to `Float64`
-#     # println("mask: ", mask)
-#     computed_results = run_example(
-#         game = game,
-#         parametric_game = parametric_game,
-#         initial_states = initial_states,
-#         goals = goals,
-#         N = N,
-#         horizon = horizon,
-#         num_sim_steps = num_sim_steps,
-#         mask = mask,  # ✅ Ensure Float64 values are passed
-#         save = false
-#     )
-#     return computed_results.last_solution.variables.x[1]  # Ensure numeric output
+# function gradient_test(parameter_value)
+    
+#     solution = MixedComplementarityProblems.solve(
+#                 parametric_game,
+#                 parameter_value;
+#                 solver_type = MixedComplementarityProblems.InteriorPoint(),
+#                 x₀ = [
+#                     pack_trajectory(zero_input_trajectory(; game, horizon, initial_state=initial_states))
+#                     zeros(sum(parametric_game.dims.λ) + parametric_game.dims.λ̃)
+#                 ],
+#             )
+
+#     loss = solution.variables.x[1]
+#     return loss
 # end
 
-# # ✅ Compute Jacobian safely
-# # J = ForwardDiff.jacobian(f, mask)
-# # J = ForwardDiff.gradient(f, mask)
-# # J = only(Zygote.forwarddiff(f, mask))
-
-# # println("Jacobian matrix:")
-# # println(J)
+# grad = only(Zygote.gradient(gradient_test, parameter_value))
+# # grad = Zygote.forwarddiff(gradient_test, parameter_value)
+# println("Gradient: ", grad)
