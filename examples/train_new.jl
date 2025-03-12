@@ -2,17 +2,17 @@
 # Set Random Seed for Reproducibility
 ###############################################################################
 using Random
-seed = 2
+seed = 1
 Random.seed!(seed)  # Set the seed to a fixed value
 
 ###############################################################################
 # Initialize Model & Optimizer
 ###############################################################################
 println("Initializing model...")
-global learning_rate = 0.1  # Learning rate for the optimizer
+global learning_rate = 0.001  # Learning rate for the optimizer
+# Make sure to pass the required arguments (e.g. input_size, N) to build_model.
 global model = build_model()  # Declare `model` as global
-opt_state = Flux.setup(Flux.Adam(learning_rate), Flux.trainable(model))
-epochs = 30  # Number of training epochs
+epochs = 260  # Number of training epochs
 println("Model initialized successfully!")
 
 global option = 1 # 0 for numerical optimization, 1 for neural network optimization
@@ -46,8 +46,10 @@ for epoch in 1:epochs
         
         # Ensure binary format for each mask
         pred_masks = [vcat([1], mask) for mask in current_masks]
+        println("\nPred Masks: ", pred_masks)
         
         batch_loss = 0.0
+        # For option==1, we accumulate gradients (returned as dictionaries) for each example.
         batch_grads = []
 
         # Loop over each example in the batch
@@ -68,17 +70,18 @@ for epoch in 1:epochs
             )
             
             upstream_grads = results[1]
-            # upstream_grads = clamp.(upstream_grads, -5, 5)
-            println("Upstream Grads: ", upstream_grads)
+            upstream_grads = clamp.(upstream_grads, -10, 10)
+            # println("Upstream Grads: ", upstream_grads)
             loss_val = results[2]
             batch_loss += mean(loss_val)
             
+            
             if option == 1
-                # Calculate gradients for each example using model's jacobian
-                jacobian = Flux.jacobian(x -> model(x), batch_inputs[:, i])
-                gradient = transpose(upstream_grads) * jacobian[1]
-                gradient = clamp.(gradient, -10, 10)
-                push!(batch_grads, gradient)
+                # Compute the vector-Jacobian product with respect to model parameters.
+                # Here we use pullback on a closure that computes the model output for the given input.
+                _, back = Zygote.pullback(() -> model(batch_inputs[:, i]), Flux.params(model))
+                grads_example = back(upstream_grads)
+                push!(batch_grads, grads_example)
             end
             
             if option == 0
@@ -91,30 +94,42 @@ for epoch in 1:epochs
         batch_loss /= batch_size
         total_loss += batch_loss
         
-        # Update gradients or masks based on optimization mode
-        mean_grads = mean(batch_grads, dims=1)  # Average gradients over the batch
-        
         if option == 1
-            params = Flux.params(model)
-            for (p, g) in zip(params, mean_grads)
-                p .-= learning_rate * g
+            # Accumulate gradients over the batch.
+            # We iterate over the model parameters (from Flux.params(model)) and sum the corresponding gradients.
+            params_set = Flux.params(model)
+            accum_grads = IdDict{Any, Any}()
+            for p in params_set
+                accum_grads[p] = zeros(size(p))
+            end
+            
+            for grads_example in batch_grads
+                for p in params_set
+                    accum_grads[p] .+= grads_example[p]
+                end
+            end
+            
+            # Compute the mean gradient for each parameter and update.
+            for p in params_set
+                mean_grad = accum_grads[p] ./ batch_size
+                p .-= learning_rate * mean_grad
             end
         end
         
         if option == 0
             # Declare that we are updating the global variable `current_masks`
             global current_masks
-            # Update the mask for numerical optimization
+            # Update the mask for numerical optimization.
             current_masks = [current_masks[i] .- learning_rate * batch_grads[i] for i in 1:batch_size]
         end
         
         push!(epoch_masks, current_masks)
-        push!(epoch_gradients, mean_grads)
+        push!(epoch_gradients, batch_grads)
         next!(progress)
     end
 
     training_losses[epoch] = total_loss
-    println("Epoch $epoch: Loss = $total_loss")
+    println("\nEpoch $epoch: Loss = $total_loss")
     
     # Additional mask update strategy can be implemented here if needed.
 end

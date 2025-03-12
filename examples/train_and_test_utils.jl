@@ -190,12 +190,26 @@ function zero_input_trajectory(;
     TrajectoryGamesBase.rollout(game.dynamics, rollout_strategy, initial_state, horizon)
 end
 
+"Generate an initial guess for primal variables following a custom input sequence."
+function custom_input_trajectory(;
+    game::TrajectoryGame{<:ProductDynamics},
+    horizon,
+    initial_state,
+    parameters,
+)
+    rollout_strategy =
+        map(1:num_players(game)) do ii
+            (x, t) -> zeros(control_dim(game.dynamics, ii))
+        end |> TrajectoryGamesBase.JointStrategy
+
+    TrajectoryGamesBase.rollout(game.dynamics, rollout_strategy, initial_state, horizon)
+end
+
 "Solve a parametric trajectory game, where the parameter is just the initial state."
 function TrajectoryGamesBase.solve_trajectory_game!(
     game::TrajectoryGame{<:ProductDynamics},
     horizon,
     parameter_value,
-    # parameters,
     strategy;
     parametric_game = build_parametric_game(;
         game,
@@ -205,7 +219,6 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         ),
     ),
     target,
-    # initial_states,
 )
     if !isnothing(strategy.last_solution) && strategy.last_solution.status == :solved
         solution = MixedComplementarityProblems.solve(
@@ -227,7 +240,6 @@ function TrajectoryGamesBase.solve_trajectory_game!(
             ],
         )
     end
-
 
     # Update warm starting info.
     if solution.status == :solved
@@ -256,18 +268,19 @@ function TrajectoryGamesBase.solve_trajectory_game!(
                 ],
             )
         end
-        # println("\ntarget:", strategy.target[1:120])
-        # println("\nsolution.variables.x[1]:", solution.variables.x[1:120])
-        # loss = sum(norm(solution.primals[i][1:120] - strategy.target[(i-1)*120+1:i*120])^2 for i in 1:4)
-        # Use the first player as the ego agent
-        loss = sum(norm(solution.primals[1][1:120] - strategy.target[1:120])^2)
-        # loss = sum(norm(solution.primals[i][j:j+1] - strategy.target[(i-1)*120+j:(i-1)*120+j+1])^2 for i in 1:4 for j in 1:2:120)
-        # loss = 0
-        # println("Loss: ", loss)
+        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120)
+        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / 3
+        # loss_parameter_sum = sum(parameter_value[8:10]) / 3
+        loss_parameter_sum = sum(parameter_value[8:10] .^ 2) / 3
+        
+        # loss = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) 
+        # + 10 * sum(parameter_value[8:10]) / 3 
+        # + 10 * sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
+        loss = loss_similarity + 5 * loss_parameter_sum + 10 * loss_parameter_binary
+
         return loss
     end
 
-    # println("parameter_value: ", parameter_value)
     try
         gradient = only(Zygote.gradient(gradient_test, parameter_value))
     catch e
@@ -275,18 +288,11 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         gradient = randn(length(parameter_value))
     end
     gradient = gradient[8:10]
-    # gradient = zeros(10)
     loss = gradient_test(parameter_value)
-    # println("Gradient computed")
-    println("Gradient: ", gradient)
-
     # # Pack solution into OpenLoopStrategy.
     trajs = unstack_trajectory(unpack_trajectory(mortar(solution.primals); game.dynamics))
     JointStrategy(map(traj -> OpenLoopStrategy(traj.xs, traj.us), trajs)), gradient, loss
-    # JointStrategy(map(traj -> OpenLoopStrategy(traj.xs, traj.us), trajs))
 
-    # return norm(solution.variables.x[1:length(strategy.target)] - strategy.target)^2
-    # return gradient
 end
 
 "Receding horizon strategy that supports warm starting."
@@ -434,12 +440,12 @@ function setup_trajectory_game(; environment, N)
     cost = let
         stage_costs = map(1:N) do ii
             (x, u, t, θi) -> let
-            goal = θi[end-5:end-4]
-            mask = θi[end-3:end]
+            goal = θi[end-(N+1):end-N]
+            mask = θi[end-(N-1):end]
                 norm_sqr(x[Block(ii)][1:2] - goal) +
                 1norm_sqr(x[Block(ii)][3:4]) + 
                 0.1norm_sqr(u[Block(ii)]) + 
-                sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+                2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
             end
         end
 
@@ -481,31 +487,26 @@ end
 ###############################################################################
 # Neural Network Model
 ###############################################################################
-# function build_model()
-#     model = Chain(
-#         Dense(input_size, 64, relu),
-#         Dense(64, 32, relu),
-#         Dense(32, N),
-#         x -> σ.(x)  # Apply element-wise sigmoid activation
-#     )  # ✅ No more GPU move
-#     return model
-# end
 
-###############################################################################
-# Generative Neural Network Model
-###############################################################################
 function build_model()
     model = Chain(
         Dense(input_size, 256, relu),
-        Dense(256, 128, relu),
-        Dense(128, 64, relu),
-        Dense(64, 32, relu),
-        Dense(32, 16, relu),
-        Dense(16, 8, relu),
-        Dense(8, N-1, sigmoid)  # Sigmoid outputs probabilities for Bernoulli sampling
+        Dense(256, 64, relu),
+        Dense(64, 16, relu),
+        Dense(16, N-1, sigmoid)
     )
     return model
 end
+
+# function build_model()
+#     model = Chain(
+#         Dense(input_size, 128, relu),
+#         # Dense(256, 128, relu),
+#         Dense(128, 32, relu),
+#         Dense(32, N-1, sigmoid)
+#     )
+#     return model
+# end
 
 ###############################################################################
 # Data Processing Functions
@@ -526,6 +527,10 @@ function sample_bernoulli(probabilities)
     return [rand(Bernoulli(p)) for p in probabilities]
 end
 
+function half_threshold(probabilites)
+    return [p > 0.5 for p in probabilites]
+end
+
 ###############################################################################
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
@@ -534,7 +539,7 @@ function run_solver(game, parametric_game, target, initial_states, goals, N, hor
     initial_states = BlockVector(initial_states, fill(4, 4))
     goals = BlockVector(goals, fill(2, 4))
     mask = Float64.(mask)  # Ensure Float64 values
-    println("Mask: ", mask)
+    # println("Mask: ", mask)
     grad, loss = run_example(
         game = game,
         parametric_game = parametric_game,
@@ -553,7 +558,7 @@ end
 # Load JSON Data
 ###############################################################################
 function load_all_json_data(directory::String)
-    json_files = glob("simulation_results_0[*.json", directory)
+    json_files = glob("simulation_results_*.json", directory)
     dataset = Vector{Tuple{Dict{Int,Array{Float64,2}}, Int, Array{Float64,1}, Array{Float64,1}}}()  
 
     for (idx, file) in enumerate(json_files)
@@ -648,8 +653,6 @@ const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_size = N * horizon * d # Input size for the neural network
 const num_sim_steps = 1  # Number of simulation steps
-
-const learning_rate = 1e-3  # Learning rate for the optimizer
 
 # Generate all possible masks dynamically (binary representation from 1 to 2^N - 1)
 const masks = [bitstring(i)[end-N+1:end] |> x -> parse.(Int, collect(x)) for i in 1:(2^N - 1)]

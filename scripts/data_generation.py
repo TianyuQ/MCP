@@ -19,8 +19,8 @@ def generate_agents_and_goals(N, bounds=(-5, 5), min_distance=2, max_velocity=0.
             velocity_magnitude = random.uniform(0, max_velocity)
             velocity_angle = random.uniform(0, 2 * math.pi)
             velocity = [
-                round(velocity_magnitude * math.cos(velocity_angle), 4),
-                round(velocity_magnitude * math.sin(velocity_angle), 4),
+                0 * round(velocity_magnitude * math.cos(velocity_angle), 4),
+                0 * round(velocity_magnitude * math.sin(velocity_angle), 4),
             ]
 
             # Add the agent's initial state with ID
@@ -58,5 +58,5 @@ if __name__ == "__main__":
         agents, goals = generate_agents_and_goals(N, bounds, min_distance, max_velocity)
 
         # Save to CSV
-        save_to_csv(agents, goals, filename=f"/home/tq877/Tianyu/player_selection/MCP/data/scenario_{scenario_id}.csv")
+        save_to_csv(agents, goals, filename=f"/home/tq877/Tianyu/player_selection/MCP/data_vel_0/scenario_{scenario_id}.csv")
     

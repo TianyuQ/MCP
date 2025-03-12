@@ -39,7 +39,7 @@ using Optimisers
 using Zygote
 using ProgressMeter
 using JSON
-# using Statistics
+using Statistics
 using Random
 using LinearAlgebra
 using Glob
@@ -50,14 +50,12 @@ using DataFrames
 using ForwardDiff
 using Distributions
 
-# include("utils.jl")
-# include("masked_game_solver.jl")
 include("train_and_test_utils.jl")
 include("parametric_masked_game_solver.jl")
-include("train_mask_only.jl")
-# include("test_mask_only.jl")
-# include("test.jl")
-# include("game_with_masks.jl")
+# include("train_mask_only.jl")
+# include("train_new.jl")
+# include("gumbel_train.jl")
+include("game_with_masks.jl")
 # include("gradient_test.jl")
 
 end # module PlayerSelectionTraining
