@@ -23,7 +23,7 @@ function run_example(;
     strategy = WarmStartRecedingHorizonStrategy(;
         game,
         parametric_game,
-        turn_length = 3,
+        turn_length = 1,
         horizon,
         parameters = parameters,
         target = target,

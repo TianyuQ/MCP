@@ -78,7 +78,7 @@ function run_lane_change_example(;
     grad = []
 
     # function grad_test(lane_preferences)
-    sim_steps, grad = let
+    sim_steps = let
         progress = ProgressMeter.Progress(num_sim_steps)
         ground_truth_strategy = WarmStartRecedingHorizonStrategy(;
             game,
@@ -87,7 +87,7 @@ function run_lane_change_example(;
             horizon,
             parameters = lane_preferences,
         )
-        println("marker")
+
         rollout(
             game.dynamics,
             ground_truth_strategy,
@@ -95,7 +95,7 @@ function run_lane_change_example(;
             num_sim_steps;
             get_info = (γ, x, t) ->
                 (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
-        ), ground_truth_strategy.gradient
+        )
     end
     println("extracted gradient: ", grad)
     println(sim_steps.infos[1].substrategies[1].xs)

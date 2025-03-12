@@ -2,7 +2,7 @@ using CSV
 using DataFrames
 using JSON
 
-global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_circle/"
+global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0/"
 
 function generate_results(;
     N = 4, #number of total players
@@ -14,7 +14,7 @@ function generate_results(;
     # game = setup_trajectory_game(; environment, N = 4)
     # parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
     target = [0 for _ in 1:N * horizon * d]
-    for scenario_id in 0:99
+    for scenario_id in 101:199
         println("Scenario $scenario_id")
         file_path = joinpath(dir_path, "scenario_$scenario_id.csv")
         data = CSV.read(file_path, DataFrame)

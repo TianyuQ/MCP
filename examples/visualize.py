@@ -116,14 +116,17 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = 'data_circle'
+dir_path = 'data_vel_0'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
-    if not fname.startswith('simulation_results_'):
-        continue
-    f = open(f'{dir_path}/{fname}')
-    data = json.load(f)
+    for scenario_id in range(101, 200):
+        if not fname.startswith(f'simulation_results_{scenario_id}['):
+            continue
+    # if not fname.startswith('simulation_results_'):
+    #     continue
+        f = open(f'{dir_path}/{fname}')
+        data = json.load(f)
 
-    trajectories, goals = get_trajectory(data)
-    plot_traj(trajectories, goals)
+        trajectories, goals = get_trajectory(data)
+        plot_traj(trajectories, goals)

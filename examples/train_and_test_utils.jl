@@ -269,13 +269,10 @@ function TrajectoryGamesBase.solve_trajectory_game!(
             )
         end
         loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120)
-        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / 3
+        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
         # loss_parameter_sum = sum(parameter_value[8:10]) / 3
-        loss_parameter_sum = sum(parameter_value[8:10] .^ 2) / 3
+        loss_parameter_sum = sum(parameter_value[8:10] .^ 2) / (N-1)
         
-        # loss = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) 
-        # + 10 * sum(parameter_value[8:10]) / 3 
-        # + 10 * sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
         loss = loss_similarity + 5 * loss_parameter_sum + 10 * loss_parameter_binary
 
         return loss
@@ -442,10 +439,7 @@ function setup_trajectory_game(; environment, N)
             (x, u, t, θi) -> let
             goal = θi[end-(N+1):end-N]
             mask = θi[end-(N-1):end]
-                norm_sqr(x[Block(ii)][1:2] - goal) +
-                1norm_sqr(x[Block(ii)][3:4]) + 
-                0.1norm_sqr(u[Block(ii)]) + 
-                2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+                norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
             end
         end
 
@@ -465,6 +459,14 @@ function setup_trajectory_game(; environment, N)
         mapreduce(vcat, xs) do x
             player_states = blocks(x)  # Extract exactly N player states
             [ 1 ]
+            # [
+            #     norm_sqr(player_states[1][1:2] - player_states[2][1:2]) - 1 * θ[7] * θ[8],
+            #     norm_sqr(player_states[1][1:2] - player_states[3][1:2]) - 1 * θ[7] * θ[9],
+            #     norm_sqr(player_states[1][1:2] - player_states[4][1:2]) - 1 * θ[7] * θ[10],
+            #     norm_sqr(player_states[2][1:2] - player_states[3][1:2]) - 1,
+            #     norm_sqr(player_states[2][1:2] - player_states[4][1:2]) - 1,
+            #     norm_sqr(player_states[3][1:2] - player_states[4][1:2]) - 1,
+            # ]
         end
     end
 
