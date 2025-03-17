@@ -14,7 +14,7 @@ function generate_results(;
     # game = setup_trajectory_game(; environment, N = 4)
     # parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
     target = [0 for _ in 1:N * horizon * d]
-    for scenario_id in 101:199
+    for scenario_id in 0:199
         println("Scenario $scenario_id")
         file_path = joinpath(dir_path, "scenario_$scenario_id.csv")
         data = CSV.read(file_path, DataFrame)
@@ -52,6 +52,7 @@ function generate_results(;
                 save = true
             )
             result_path = joinpath(dir_path, "simulation_results_$scenario_id$mask.json")
+            # result_path = "test_result_$mask.json"
             open(result_path, "w") do io
                 JSON.print(io, result)
             end

@@ -37,16 +37,14 @@ function run_example(;
         num_sim_steps;
         get_info = (γ, x, t) -> (ProgressMeter.next!(progress); γ.receding_horizon_strategy),
     )
-    # println("\nsim_steps: ", sim_steps)
-    # println("\ngradient: ", gradient[1][2])
-    # println("\nLoss: ", gradient[1][3])
-    # println("sim_steps: ", sim_steps[2].substrategies[1].xs)
-    # println("sim_steps: ", sim_steps[2].substrategies[1].us)
-    # gradient = parent(sim_steps.us[1])
-    # true_gradient1 = gradient[7:10]
-    # true_gradient2 = gradient[17:20]
-    # true_gradient3 = gradient[27:30]
-    # true_gradient4 = gradient[37:40]
+    # println("strategy: ", strategy.receding_horizon_strategy.substrategies[1].xs)
+    # println("sim_steps[1]: ", sim_steps[1])
+    # println("sim_steps[2]: ", sim_steps[2])
+    # println("sim_steps: ", sim_steps)
+    # println("sim_steps: ", sim_steps[step].substrategies[player_id].xs for step in 1:num_sim_steps)
+    # diff = sim_steps[step].substrategies[player_id].xs - strategy.receding_horizon_strategy.substrategies[player_id].xs
+    #  for step in 1:num_sim_steps
+    
 
     # mean_gradient = (true_gradient1 .+ true_gradient2 .+ true_gradient3 .+ true_gradient4) ./ 4
 
@@ -59,8 +57,10 @@ function run_example(;
         for player_id in 1:N
             results["Player $player_id Initial State"] = initial_states[4 * (player_id - 1) + 1:4 * player_id]
             results["Player $player_id Goal"] = goals[2 * (player_id - 1) + 1:2 * player_id]
-            results["Player $player_id Trajectory"] = [sim_steps[step].substrategies[player_id].xs for step in 1:num_sim_steps]
-            results["Player $player_id Control"] = [sim_steps[step].substrategies[player_id].us for step in 1:num_sim_steps]
+            # results["Player $player_id Trajectory"] = [sim_steps[step].substrategies[player_id].xs for step in 1:num_sim_steps]
+            # results["Player $player_id Control"] = [sim_steps[step].substrategies[player_id].us for step in 1:num_sim_steps]
+            results["Player $player_id Trajectory"] = [strategy.receding_horizon_strategy.substrategies[player_id].xs for step in 1:num_sim_steps]
+            results["Player $player_id Control"] = [strategy.receding_horizon_strategy.substrategies[player_id].us for step in 1:num_sim_steps]
         end
 
         return results

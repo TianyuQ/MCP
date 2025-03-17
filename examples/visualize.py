@@ -1,4 +1,5 @@
 import json
+from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import PIL
@@ -120,7 +121,7 @@ dir_path = 'data_vel_0'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
-    for scenario_id in range(101, 200):
+    for scenario_id in range(0, 100):
         if not fname.startswith(f'simulation_results_{scenario_id}['):
             continue
     # if not fname.startswith('simulation_results_'):

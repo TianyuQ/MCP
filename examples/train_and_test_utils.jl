@@ -270,7 +270,6 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         end
         loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120)
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
-        # loss_parameter_sum = sum(parameter_value[8:10]) / 3
         loss_parameter_sum = sum(parameter_value[8:10] .^ 2) / (N-1)
         
         loss = loss_similarity + 5 * loss_parameter_sum + 10 * loss_parameter_binary
@@ -472,7 +471,8 @@ function setup_trajectory_game(; environment, N)
 
     agent_dynamics = planar_double_integrator(;
         state_bounds = (; lb = [-Inf, -Inf, -2, -2], ub = [Inf, Inf, 2, 2]),
-        control_bounds = (; lb = [-3, -3], ub = [3, 3]),
+        # control_bounds = (; lb = [-3, -3], ub = [3, 3]),
+        control_bounds = (; lb = [-1, -1], ub = [1, 1]),
     )
     dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
 
@@ -675,5 +675,5 @@ dataset = load_all_json_data(directory)  # Load all training data
 println("Dataset loaded successfully. Total samples: ", length(dataset))
 
 # Set batch size and initialize DataLoader
-batch_size = 1
+batch_size = 8
 dataloader = DataLoader(dataset, batch_size)

@@ -12,7 +12,7 @@ println("Initializing model...")
 global learning_rate = 0.001  # Learning rate for the optimizer
 # Make sure to pass the required arguments (e.g. input_size, N) to build_model.
 global model = build_model()  # Declare `model` as global
-epochs = 260  # Number of training epochs
+epochs = 30  # Number of training epochs
 println("Model initialized successfully!")
 
 global option = 1 # 0 for numerical optimization, 1 for neural network optimization
@@ -91,7 +91,7 @@ for epoch in 1:epochs
         end
         
         # Average the loss over the batch
-        batch_loss /= batch_size
+        # batch_loss /= batch_size
         total_loss += batch_loss
         
         if option == 1
