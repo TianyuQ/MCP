@@ -268,11 +268,11 @@ function TrajectoryGamesBase.solve_trajectory_game!(
                 ],
             )
         end
-        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120)
+        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
-        loss_parameter_sum = sum(parameter_value[8:10] .^ 2) / (N-1)
+        loss_parameter_sum = sum(parameter_value[8:10]) / (N-1)
         
-        loss = loss_similarity + 5 * loss_parameter_sum + 10 * loss_parameter_binary
+        loss = 12 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary
 
         return loss
     end
@@ -675,5 +675,5 @@ dataset = load_all_json_data(directory)  # Load all training data
 println("Dataset loaded successfully. Total samples: ", length(dataset))
 
 # Set batch size and initialize DataLoader
-batch_size = 8
+batch_size = 16
 dataloader = DataLoader(dataset, batch_size)

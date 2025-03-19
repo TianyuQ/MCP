@@ -32,3 +32,5 @@ data*
 
 *.png
 *.csv
+
+examples/logs/*

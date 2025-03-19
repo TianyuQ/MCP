@@ -25,6 +25,9 @@ plt.title("Training Loss Trend")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.grid(True)
-plt.show()
-# Save the plot to a file instead of showing it
-plt.savefig("training_loss_trend.png")
+
+# Save the plot to a file
+plt.savefig("loss_trend_plot.png")
+
+# Remove plt.show() if you don't want to display the plot
+# plt.show()
