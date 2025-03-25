@@ -1,18 +1,9 @@
 ###############################################################################
-# Set Random Seed for Reproducibility
-###############################################################################
-using Random
-seed = 2
-Random.seed!(seed)  # Set the seed to a fixed value
-
-###############################################################################
 # Initialize Model & Optimizer
 ###############################################################################
 println("Initializing model...")
-global learning_rate = 0.01  # Learning rate for the optimizer
 # Make sure to pass the required arguments (e.g. input_size, N) to build_model.
 global model = build_model()  # Declare `model` as global
-epochs = 150  # Number of training epochs
 println("Model initialized successfully!")
 
 global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed"
@@ -40,7 +31,7 @@ for epoch in 1:epochs
     epoch_gradients = []
     progress = Progress(length(dataloader.dataset), desc="Epoch $epoch Training Progress")
     
-    for (batch_inputs, batch_targets, batch_initial_states, batch_goals, batch_indices) in dataloader
+    for (batch_inputs, batch_targets, batch_initial_states, batch_goals, batch_indices) in train_dataloader
         # For neural network optimization, compute masks each batch
         current_masks = [model(batch_inputs[:, i]) for i in 1:batch_size] 
         
