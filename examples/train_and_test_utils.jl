@@ -268,7 +268,9 @@ function TrajectoryGamesBase.solve_trajectory_game!(
                 ],
             )
         end
-        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
+        # loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
+        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 41:2:120) / 40
+
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
         loss_parameter_sum = sum(parameter_value[8:10]) / (N-1)
         
@@ -327,95 +329,8 @@ function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
         strategy.time_last_updated = time
         time_along_plan = 1
     end
-    # println("\n gradient: ", strategy.gradient)
-    # println("strategy.gradient: ", strategy.gradient)
-    # println("strategy.loss: ", strategy.loss)
     strategy.receding_horizon_strategy(state, time_along_plan), strategy.gradient, strategy.loss
-    # gradient
 end
-
-# function TrajectoryGamesBase.solve_trajectory_game!(
-#     game::TrajectoryGame{<:ProductDynamics},
-#     horizon,
-#     parameter_value,
-#     strategy;
-#     parametric_game = build_parametric_game(;
-#         game,
-#         horizon,
-#         params_per_player = Int(
-#             (length(parameter_value) - state_dim(game)) / num_players(game),
-#         ),
-#     ),
-# )
-#     # Solve, maybe with warm starting.
-#     if !isnothing(strategy.last_solution) && strategy.last_solution.status == :solved
-#         solution = MixedComplementarityProblems.solve(
-#             parametric_game,
-#             parameter_value;
-#             solver_type = MixedComplementarityProblems.InteriorPoint(),
-#             x₀ = strategy.last_solution.variables.x,
-#             y₀ = strategy.last_solution.variables.y,
-#         )
-#     else
-#         (; initial_state) = unpack_parameters(parameter_value; game.dynamics)
-#         solution = MixedComplementarityProblems.solve(
-#             parametric_game,
-#             parameter_value;
-#             solver_type = MixedComplementarityProblems.InteriorPoint(),
-#             x₀ = [
-#                 pack_trajectory(zero_input_trajectory(; game, horizon, initial_state))
-#                 zeros(sum(parametric_game.dims.λ) + parametric_game.dims.λ̃)
-#             ],
-#         )
-#     end
-
-#     # Update warm starting info.
-#     if solution.status == :solved
-#         strategy.last_solution = solution
-#     end
-#     strategy.solution_status = solution.status
-
-#     # Pack solution into OpenLoopStrategy.
-#     trajs = unstack_trajectory(unpack_trajectory(mortar(solution.primals); game.dynamics))
-#     println("\nsolution:", solution.primals[1])
-#     # println("\ntrajs: ", trajs[1].xs)
-#     # println("\ntrajs: ", size(trajs[1].us))
-#     JointStrategy(map(traj -> OpenLoopStrategy(traj.xs, traj.us), trajs))
-# end
-
-# "Receding horizon strategy that supports warm starting."
-# Base.@kwdef mutable struct WarmStartRecedingHorizonStrategy
-#     game::TrajectoryGame
-#     parametric_game::MixedComplementarityProblems.ParametricGame
-#     receding_horizon_strategy::Any = nothing
-#     time_last_updated::Int = 0
-#     turn_length::Int
-#     horizon::Int
-#     last_solution::Any = nothing
-#     parameters::Any = nothing
-#     solution_status::Any = nothing
-# end
-
-# function (strategy::WarmStartRecedingHorizonStrategy)(state, time)
-#     plan_exists = !isnothing(strategy.receding_horizon_strategy)
-#     time_along_plan = time - strategy.time_last_updated + 1
-#     plan_is_still_valid = 1 <= time_along_plan <= strategy.turn_length
-
-#     update_plan = !plan_exists || !plan_is_still_valid
-#     if update_plan
-#         strategy.receding_horizon_strategy = TrajectoryGamesBase.solve_trajectory_game!(
-#             strategy.game,
-#             strategy.horizon,
-#             pack_parameters(state, strategy.parameters),
-#             strategy;
-#             strategy.parametric_game,
-#         )
-#         strategy.time_last_updated = time
-#         time_along_plan = 1
-#     end
-
-#     strategy.receding_horizon_strategy(state, time_along_plan)
-# end
 
 ###############################################################################
 # Game Setup
@@ -460,18 +375,12 @@ function setup_trajectory_game(; environment, N)
             [ 1 ]
             # [
             #     norm_sqr(player_states[1][1:2] - player_states[2][1:2]) - 1 * θ[7] * θ[8],
-            #     norm_sqr(player_states[1][1:2] - player_states[3][1:2]) - 1 * θ[7] * θ[9],
-            #     norm_sqr(player_states[1][1:2] - player_states[4][1:2]) - 1 * θ[7] * θ[10],
-            #     norm_sqr(player_states[2][1:2] - player_states[3][1:2]) - 1,
-            #     norm_sqr(player_states[2][1:2] - player_states[4][1:2]) - 1,
-            #     norm_sqr(player_states[3][1:2] - player_states[4][1:2]) - 1,
             # ]
         end
     end
 
     agent_dynamics = planar_double_integrator(;
         state_bounds = (; lb = [-Inf, -Inf, -2, -2], ub = [Inf, Inf, 2, 2]),
-        # control_bounds = (; lb = [-3, -3], ub = [3, 3]),
         control_bounds = (; lb = [-1, -1], ub = [1, 1]),
     )
     dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
@@ -500,48 +409,21 @@ function build_model()
     return model
 end
 
-# function build_model()
-#     model = Chain(
-#         Dense(input_size, 128, relu),
-#         # Dense(256, 128, relu),
-#         Dense(128, 32, relu),
-#         Dense(32, N-1, sigmoid)
-#     )
-#     return model
-# end
-
 ###############################################################################
 # Data Processing Functions
 ###############################################################################
-# function prepare_input(trajectories::Dict{Int, Matrix{Float64}}, ego_index::Int)
-#     flat_traj = vcat([vec(trajectories[i]) for i in 1:N]...)
-#     ego_onehot = zeros(Float64, N)
-#     ego_onehot[ego_index] = 1.0
-#     return vcat(flat_traj, ego_onehot)  # ✅ No `.device`
-# end
-
 function prepare_input(trajectories::Dict{Int, Matrix{Float64}})
-    flat_traj = vcat([vec(trajectories[i]) for i in 1:N]...)
+    flat_traj = vcat([vec(trajectories[i][1:10, 1:2]) for i in 1:N]...)
     return flat_traj  # ✅ No `.device`
-end
-
-function sample_bernoulli(probabilities)
-    return [rand(Bernoulli(p)) for p in probabilities]
-end
-
-function half_threshold(probabilites)
-    return [p > 0.5 for p in probabilites]
 end
 
 ###############################################################################
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
-# function run_solver(game, parametric_game, mask, initial_states, goals, N, horizon, num_sim_steps)
 function run_solver(game, parametric_game, target, initial_states, goals, N, horizon, num_sim_steps, mask)
     initial_states = BlockVector(initial_states, fill(4, 4))
     goals = BlockVector(goals, fill(2, 4))
-    mask = Float64.(mask)  # Ensure Float64 values
-    # println("Mask: ", mask)
+    mask = Float64.(mask)
     grad, loss = run_example(
         game = game,
         parametric_game = parametric_game,
@@ -653,7 +535,7 @@ end
 const N = 4      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
-const input_size = N * horizon * d # Input size for the neural network
+const input_size = N * 10 * 2 # Input size for the neural network
 const num_sim_steps = 1  # Number of simulation steps
 
 # Generate all possible masks dynamically (binary representation from 1 to 2^N - 1)
@@ -670,7 +552,7 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-directory = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
+directory = "C:/UT Austin/Research/MCP/data_test"
 dataset = load_all_json_data(directory)  # Load all training data
 println("Dataset loaded successfully. Total samples: ", length(dataset))
 
