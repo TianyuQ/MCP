@@ -690,8 +690,15 @@ train_batches = length(train_dataset) / batch_size
 val_batches = length(val_dataset) / batch_size
 test_batches = length(test_dataset) / batch_size
 
-epochs = 2  # Number of training epochs
+epochs = 150  # Number of training epochs
 global learning_rate = 0.01  # Learning rate for the optimizer
+
+###############################################################################
+# Early Stopping Hyperparameters
+###############################################################################
+patience = 150            # Number of epochs to wait for improvement
+global patience_counter = 0
+global best_val_loss = Inf      # Initialize best validation loss
 
 ###############################################################################
 # Set Random Seed for Reproducibility
@@ -699,3 +706,5 @@ global learning_rate = 0.01  # Learning rate for the optimizer
 using Random
 seed = 2
 Random.seed!(seed)  # Set the seed to a fixed value
+
+global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience"

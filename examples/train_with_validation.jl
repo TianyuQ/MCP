@@ -5,8 +5,6 @@ println("Initializing model...")
 global model = build_model()     # Ensure build_model() accepts required arguments
 println("Model initialized successfully!")
 
-global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed"
-
 ###############################################################################
 # Import Required Packages
 ###############################################################################
@@ -21,13 +19,6 @@ using Flux
 # Initialize TensorBoard Logger
 ###############################################################################
 tb_logger = TBLogger("logs/$record_name")  # Logs will be saved under logs/record_name
-
-###############################################################################
-# Early Stopping Hyperparameters
-###############################################################################
-patience = 10            # Number of epochs to wait for improvement
-global patience_counter = 0
-global best_val_loss = Inf      # Initialize best validation loss
 
 ###############################################################################
 # Training Loop with Validation and Early Stopping
@@ -138,7 +129,7 @@ for epoch in 1:epochs
         global patience_counter
         patience_counter = 0
         # Save the best model so far
-        BSON.bson("logs/$record_name/best_model_$record_name.bson", Dict(:model => model))
+        BSON.bson("logs/$record_name/best_model.bson", Dict(:model => model))
     else
         global patience_counter
         patience_counter += 1
@@ -153,14 +144,14 @@ end
 # Save Final Trained Model & Training Loss Records
 ###############################################################################
 println("\nSaving trained generative model...")
-BSON.bson("logs/$record_name/trained_model_$record_name.bson", Dict(:model => model))
+BSON.bson("logs/$record_name/trained_model.bson", Dict(:model => model))
 println("Model saved successfully!")
 
 println("\nSaving training loss records...")
-open("logs/$record_name/training_losses_$record_name.json", "w") do f
+open("logs/$record_name/training_losses.json", "w") do f
     JSON.print(f, sort(collect(training_losses)), 4)
 end
-println("Training loss saved successfully to logs/$record_name/training_losses_$record_name.json!")
+println("Training loss saved successfully to logs/$record_name/training_losses.json!")
 
 ###############################################################################
 # Close the TensorBoard Logger
