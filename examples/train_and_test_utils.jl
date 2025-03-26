@@ -552,10 +552,41 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-directory = "C:/UT Austin/Research/MCP/data_test"
-dataset = load_all_json_data(directory)  # Load all training data
-println("Dataset loaded successfully. Total samples: ", length(dataset))
+train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train/"
+train_dataset = load_all_json_data(train_dir)
+val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val/"
+val_dataset = load_all_json_data(val_dir)
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
+test_dataset = load_all_json_data(test_dir)
+println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
+println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
+println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # Set batch size and initialize DataLoader
 batch_size = 16
-dataloader = DataLoader(dataset, batch_size)
+train_dataloader = DataLoader(train_dataset, batch_size)
+val_dataloader = DataLoader(val_dataset, batch_size)
+test_dataloader = DataLoader(test_dataset, batch_size)
+
+train_batches = length(train_dataset) / batch_size
+val_batches = length(val_dataset) / batch_size
+test_batches = length(test_dataset) / batch_size
+
+epochs = 150  # Number of training epochs
+global learning_rate = 0.01  # Learning rate for the optimizer
+
+###############################################################################
+# Early Stopping Hyperparameters
+###############################################################################
+patience = 150            # Number of epochs to wait for improvement
+global patience_counter = 0
+global best_val_loss = Inf      # Initialize best validation loss
+
+###############################################################################
+# Set Random Seed for Reproducibility
+###############################################################################
+using Random
+seed = 2
+Random.seed!(seed)  # Set the seed to a fixed value
+
+global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience"
