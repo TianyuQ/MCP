@@ -2,9 +2,8 @@ import json
 from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import PIL
 import os
-N=4
+N=10
 
 def get_trajectory(data):
     trajectories = {}
@@ -48,12 +47,12 @@ def plot_traj(trajectories, goals):
     plt.xlabel("X Position")
     plt.ylabel("Y Position")
     plt.title(f"Trajectories for {fname}")
-    plt.legend()
+    # plt.legend()
     plt.grid(True)
-    plt.xlim(-3.5, 3.5)
-    plt.ylim(-3.5, 3.5)
-    # plt.xlim(-7.5, 7.5)
-    # plt.ylim(-7.5, 7.5)
+    # plt.xlim(-3.5, 3.5)
+    # plt.ylim(-3.5, 3.5)
+    plt.xlim(-5.5, 5.5)
+    plt.ylim(-5.5, 5.5)
     plt.gca().set_aspect('equal')
     plt.savefig(f"trajectory_{fname}.png")
     plt.close()
@@ -91,12 +90,12 @@ def animate_traj(trajectories, goals):
         ax.set_aspect("equal", adjustable="box")  # Keeps a square grid
 
         # Set plot limits (adjust based on data range)
-        ax.set_xlim(-3.5, 3.5)
-        ax.set_ylim(-3.5, 3.5)
+        ax.set_xlim(-5.5, 5.5)
+        ax.set_ylim(-5.5, 5.5)
         ax.set_xlabel("X Position")
         ax.set_ylabel("Y Position")
         ax.set_title("Animated Player Trajectories")
-        ax.legend(loc="best")
+        # ax.legend(loc="best")
         ax.grid(True)
 
         # Animation update function
@@ -117,7 +116,7 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = 'data_vel_0'
+dir_path = 'data_vel_0_10'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
