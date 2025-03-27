@@ -412,8 +412,8 @@ end
 ###############################################################################
 # Data Processing Functions
 ###############################################################################
-function prepare_input(trajectories::Dict{Int, Matrix{Float64}})
-    flat_traj = vcat([vec(trajectories[i][1:10, 1:2]) for i in 1:N]...)
+function prepare_input(trajectories::Dict{Int, Matrix{Float64}}, input_horizon, input_state_dim)
+    flat_traj = vcat([vec(trajectories[i][1:input_horizon, 1:input_state_dim]) for i in 1:N]...)
     return flat_traj  # ✅ No `.device`
 end
 
@@ -513,7 +513,7 @@ function Base.iterate(dl::DataLoader, state=1)
         push!(batch_indices, idx)  # store the actual dataset index
         
         trajectories, ego_index, initial_states, goals = dl.dataset[idx]
-        input_vec = prepare_input(trajectories)
+        input_vec = prepare_input(trajectories, input_horizon, input_state_dim)
         push!(batch_inputs, input_vec)
         push!(batch_initial_states, initial_states)
         push!(batch_goals, goals)
@@ -535,7 +535,9 @@ end
 const N = 10      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
-const input_size = N * 10 * 2 # Input size for the neural network
+const input_horizon = 10  # Number of time steps in input trajectory
+const input_state_dim = 4  # State dimension per player in input trajectory
+const input_size = N * input_horizon * input_state_dim  # Input size for neural network
 const num_sim_steps = 1  # Number of simulation steps
 
 # Generate all possible masks dynamically (binary representation from 1 to 2^N - 1)
@@ -572,13 +574,13 @@ batch_size = 16
 # val_batches = length(val_dataset) / batch_size
 # test_batches = length(test_dataset) / batch_size
 
-epochs = 150  # Number of training epochs
+epochs = 100  # Number of training epochs
 global learning_rate = 0.01  # Learning rate for the optimizer
 
 ###############################################################################
 # Early Stopping Hyperparameters
 ###############################################################################
-patience = 150            # Number of epochs to wait for improvement
+patience = epochs            # Number of epochs to wait for improvement
 global patience_counter = 0
 global best_val_loss = Inf      # Initialize best validation loss
 

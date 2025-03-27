@@ -2,7 +2,6 @@ import json
 from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import PIL
 import os
 N=10
 
@@ -48,7 +47,7 @@ def plot_traj(trajectories, goals):
     plt.xlabel("X Position")
     plt.ylabel("Y Position")
     plt.title(f"Trajectories for {fname}")
-    plt.legend()
+    # plt.legend()
     plt.grid(True)
     # plt.xlim(-3.5, 3.5)
     # plt.ylim(-3.5, 3.5)
@@ -96,7 +95,7 @@ def animate_traj(trajectories, goals):
         ax.set_xlabel("X Position")
         ax.set_ylabel("Y Position")
         ax.set_title("Animated Player Trajectories")
-        ax.legend(loc="best")
+        # ax.legend(loc="best")
         ax.grid(True)
 
         # Animation update function
@@ -117,7 +116,7 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = 'C:\UT Austin\Research\MCP\data_vel_0_10'
+dir_path = 'data_vel_0'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
