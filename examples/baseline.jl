@@ -28,13 +28,13 @@ function distance_threshold(trajectories, ego_player_id, threshold, player_num)
         if playerid != ego_player_id
             if norm(trajectories[string(ego_player_id)][1:2] - trajectories[string(playerid)][1:2]) < threshold
                 mask[playerid] = 1
-            else
-                mask[playerid] = 0
             end
         end
     end
     return mask
 end
+
+function 
 
 # test
 trajectories, goals, controls = get_trajectory(data, 4)
