@@ -53,6 +53,10 @@ def plot_traj(trajectories, goals):
     # plt.ylim(-3.5, 3.5)
     plt.xlim(-5.5, 5.5)
     plt.ylim(-5.5, 5.5)
+    # plt.xlim(-3.5, 3.5)
+    # plt.ylim(-3.5, 3.5)
+    plt.xlim(-5.5, 5.5)
+    plt.ylim(-5.5, 5.5)
     plt.gca().set_aspect('equal')
     plt.savefig(f"trajectory_{fname}.png")
     plt.close()
@@ -116,7 +120,7 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = 'data_vel_0'
+dir_path = 'data_vel_0_10'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
