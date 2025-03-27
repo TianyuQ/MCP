@@ -12,8 +12,8 @@ function run_example(;
 )
     results = Dict()
     # Prepare parameters for the game simulation
-    parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], i == 1 ? mask : [1, 1, 1, 1]) for i in 1:N])
-    # parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], mask) for i in 1:N])
+    println("Mask: ", mask)
+    parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], i == 1 ? mask : ones(N)) for i in 1:N])
 
     # Progress bar for simulation steps
     progress = ProgressMeter.Progress(num_sim_steps)

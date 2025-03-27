@@ -2,17 +2,14 @@ using CSV
 using DataFrames
 using JSON
 
-global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0/"
+global dir_path = "C:/UT Austin/Research/MCP/data_vel_0_10"
 
 function generate_results(;
-    N = 4, #number of total players
+    N = 10, #number of total players
     horizon = 30,
-    scenario_num = 100,
+    scenario_num = 200,
     total_steps = 1,
 )
-    # (; environment) = setup_road_environment(; length = 7)
-    # game = setup_trajectory_game(; environment, N = 4)
-    # parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
     target = [0 for _ in 1:N * horizon * d]
     for scenario_id in 0:199
         println("Scenario $scenario_id")
@@ -20,25 +17,13 @@ function generate_results(;
         data = CSV.read(file_path, DataFrame)
         goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
         initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
-        masks = [
-            [1, 0, 0, 0],
-            # [0, 1, 0, 0],
-            # [0, 0, 1, 0],
-            # [0, 0, 0, 1],
-            [1, 1, 0, 0],
-            [1, 0, 1, 0],
-            [1, 0, 0, 1],
-            # [0, 1, 1, 0],
-            # [0, 1, 0, 1],
-            # [0, 0, 1, 1],
-            [1, 1, 1, 0],
-            [1, 1, 0, 1],
-            [1, 0, 1, 1],
-            # [0, 1, 1, 1],
-            [1, 1, 1, 1],
-        ]
+        # masks = [
+        #     # [[1; collect(masks)] for masks in Iterators.product((0:1 for _ in 2:N)...)]
+        # ]
+        # masks = [[1; collect(bits)] for bits in Iterators.product(fill((0,1), N-1)...)]
+        masks = [ones(N)]
         for mask in masks
-            println("Mask: $mask")
+            # println("Mask: $mask")
             result = run_example(;
                 game,
                 parametric_game,
@@ -52,7 +37,6 @@ function generate_results(;
                 save = true
             )
             result_path = joinpath(dir_path, "simulation_results_$scenario_id$mask.json")
-            # result_path = "test_result_$mask.json"
             open(result_path, "w") do io
                 JSON.print(io, result)
             end

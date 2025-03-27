@@ -285,7 +285,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         println("Gradient computation failed, using random gradient.")
         gradient = randn(length(parameter_value))
     end
-    gradient = gradient[8:10]
+    gradient = gradient[7+1:7+(N-1)]
     loss = gradient_test(parameter_value)
     # # Pack solution into OpenLoopStrategy.
     trajs = unstack_trajectory(unpack_trajectory(mortar(solution.primals); game.dynamics))
@@ -532,7 +532,7 @@ end
 ###############################################################################
 # Problem and Data Dimensions
 ###############################################################################
-const N = 4      # Number of players
+const N = 10      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_size = N * 10 * 2 # Input size for the neural network
@@ -544,33 +544,33 @@ const masks = [bitstring(i)[end-N+1:end] |> x -> parse.(Int, collect(x)) for i i
 ###############################################################################
 # Load Game
 ###############################################################################
-(; environment) = setup_road_environment(; length = 7)
+(; environment) = setup_road_environment(; length = 10)
 game = setup_trajectory_game(; environment, N = N)
-parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = 6)
+parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = N + 2)
 
 ###############################################################################
 # Load Dataset
 ###############################################################################
-println("Loading dataset...")
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train/"
-train_dataset = load_all_json_data(train_dir)
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val/"
-val_dataset = load_all_json_data(val_dir)
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
-test_dataset = load_all_json_data(test_dir)
-println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
-println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
-println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
+# println("Loading dataset...")
+# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train/"
+# train_dataset = load_all_json_data(train_dir)
+# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val/"
+# val_dataset = load_all_json_data(val_dir)
+# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
+# test_dataset = load_all_json_data(test_dir)
+# println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
+# println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
+# println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
-# Set batch size and initialize DataLoader
+# # Set batch size and initialize DataLoader
 batch_size = 16
-train_dataloader = DataLoader(train_dataset, batch_size)
-val_dataloader = DataLoader(val_dataset, batch_size)
-test_dataloader = DataLoader(test_dataset, batch_size)
+# train_dataloader = DataLoader(train_dataset, batch_size)
+# val_dataloader = DataLoader(val_dataset, batch_size)
+# test_dataloader = DataLoader(test_dataset, batch_size)
 
-train_batches = length(train_dataset) / batch_size
-val_batches = length(val_dataset) / batch_size
-test_batches = length(test_dataset) / batch_size
+# train_batches = length(train_dataset) / batch_size
+# val_batches = length(val_dataset) / batch_size
+# test_batches = length(test_dataset) / batch_size
 
 epochs = 150  # Number of training epochs
 global learning_rate = 0.01  # Learning rate for the optimizer
