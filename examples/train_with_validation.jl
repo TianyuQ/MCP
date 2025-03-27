@@ -35,9 +35,14 @@ for epoch in 1:epochs
     # Training Phase
     # ---------------------------
     for (batch_inputs, batch_targets, batch_initial_states, batch_goals, batch_indices) in train_dataloader
-        current_masks = [model(batch_inputs[:, i]) for i in 1:batch_size]
-        pred_masks = [vcat([1], mask) for mask in current_masks]
-        println("\nPred Masks: ", [round.(mask, digits=4) for mask in pred_masks])
+        parameters = [model(batch_inputs[:, i]) for i in 1:batch_size]
+        pred_weights = [vcat([1, 0.1, 2], param[1:3*(N-1)]) for param in parameters]
+        pred_goals = [vcat(batch_goals[1:2, i], param[3*(N-1)+1:5*(N-1)]) for (i, param) in enumerate(parameters)]
+        pred_masks = [vcat([1], param[5*(N-1)+1:6*(N-1)]) for param in parameters]
+
+        println("Train Weights: ", pred_weights)
+        println("Train Goals: ", pred_goals)
+        println("Train Masks: ", pred_masks)
         
         # batch_loss = 0.0
         batch_grads = []
@@ -49,7 +54,8 @@ for epoch in 1:epochs
                 parametric_game,
                 batch_targets[:, i],
                 batch_initial_states[:, i],
-                batch_goals[:, i],
+                pred_goals[i],
+                pred_weights[i],
                 N, horizon, num_sim_steps,
                 pred_masks[i]
             )
@@ -97,9 +103,14 @@ for epoch in 1:epochs
     println("Validating...")
     global val_loss = 0.0
     for (val_inputs, val_targets, val_initial_states, val_goals, val_indices) in val_dataloader
-        current_masks = [model(val_inputs[:, i]) for i in 1:batch_size]
-        pred_masks = [vcat([1], mask) for mask in current_masks]
-        println("\nPred Masks: ", [round.(mask, digits=4) for mask in pred_masks])
+        parameters = [model(val_inputs[:, i]) for i in 1:batch_size]
+        pred_weights = [vcat([1, 0.1, 2], param[1:3*(N-1)]) for param in parameters]
+        pred_goals = [vcat(val_goals[1:2, i], param[3*(N-1)+1:5*(N-1)]) for (i, param) in enumerate(parameters)]
+        pred_masks = [vcat([1], param[5*(N-1)+1:6*(N-1)]) for param in parameters]
+
+        println("Val Weights: ", pred_weights)
+        println("Val Goals: ", pred_goals)
+        println("Val Masks: ", pred_masks)
         
         for i in 1:batch_size
             results = run_solver(
@@ -107,7 +118,8 @@ for epoch in 1:epochs
                 parametric_game,
                 val_targets[:, i],
                 val_initial_states[:, i],
-                val_goals[:, i],
+                pred_goals[i],
+                pred_weights[i],
                 N, horizon, num_sim_steps,
                 pred_masks[i]
             )

@@ -8,6 +8,7 @@ function run_example(;
     num_sim_steps,
     mask,
     target,
+    weight,
     save = false
 )
     results = Dict()

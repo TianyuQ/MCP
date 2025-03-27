@@ -353,7 +353,9 @@ function setup_trajectory_game(; environment, N)
             (x, u, t, θi) -> let
             goal = θi[end-(N+1):end-N]
             mask = θi[end-(N-1):end]
-                norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+            weight = θi[end-(N+4):end-(N+2)]
+            # weight_gt = [1, 0.1, 2]
+                norm_sqr(x[Block(ii)][1:2] - goal) + weight[1] * norm_sqr(x[Block(ii)][3:4]) + weight[2] * norm_sqr(u[Block(ii)]) + weight[3] * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
             end
         end
 
@@ -400,14 +402,29 @@ end
 ###############################################################################
 
 function build_model()
-    model = Chain(
+    base_model = Chain(
         Dense(input_size, 256, relu),
         Dense(256, 64, relu),
         Dense(64, 16, relu),
-        Dense(16, N-1, sigmoid)
+        Dense(16, 6*(N-1))  # output layer now produces 6*(N-1) values
     )
+    
+    # Custom activation to split and adjust the outputs into three groups:
+    function custom_output(x)
+        n = N - 1
+        # First 3*(N-1): ensure nonnegative
+        out1 = relu.(x[1:3*n])
+        # Next 2*(N-1): scale tanh to achieve range [-3.5, 3.5]
+        out2 = 3.5 .* tanh.(x[3*n+1:5*n])
+        # Last (N-1): use sigmoid to obtain outputs in [0,1]
+        out3 = sigmoid.(x[5*n+1:6*n])
+        return vcat(out1, out2, out3)
+    end
+    
+    model = Chain(base_model, custom_output)
     return model
 end
+
 
 ###############################################################################
 # Data Processing Functions
@@ -420,9 +437,10 @@ end
 ###############################################################################
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
-function run_solver(game, parametric_game, target, initial_states, goals, N, horizon, num_sim_steps, mask)
-    initial_states = BlockVector(initial_states, fill(4, 4))
-    goals = BlockVector(goals, fill(2, 4))
+function run_solver(game, parametric_game, target, initial_states, goals, weights, N, horizon, num_sim_steps, mask)
+    initial_states = BlockVector(initial_states, fill(4, N))
+    goals = BlockVector(goals, fill(2, N))
+    weights = BlockVector(weights, fill(3, N))
     mask = Float64.(mask)
     grad, loss = run_example(
         game = game,
@@ -433,7 +451,8 @@ function run_solver(game, parametric_game, target, initial_states, goals, N, hor
         horizon = horizon,
         num_sim_steps = num_sim_steps,
         mask = mask,
-        target = target
+        target = target,
+        weight = weights
     )
     return grad, loss  # Return as a single array
 end
@@ -554,18 +573,18 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train/"
+train_dir = "C:/UT Austin/Research/MCP/data_train"
 train_dataset = load_all_json_data(train_dir)
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val/"
+val_dir = "C:/UT Austin/Research/MCP/data_val"
 val_dataset = load_all_json_data(val_dir)
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
+test_dir = "C:/UT Austin/Research/MCP/data_test"
 test_dataset = load_all_json_data(test_dir)
 println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
 println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # Set batch size and initialize DataLoader
-batch_size = 16
+batch_size = 1
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
