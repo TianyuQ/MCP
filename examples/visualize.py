@@ -25,7 +25,7 @@ def get_trajectory(data):
     
     return trajectories, goals
 
-def plot_traj(trajectories, goals):
+def plot_traj(trajectories, goals, fname):
     colors = {}
 
     # now plot trajectories
@@ -52,11 +52,11 @@ def plot_traj(trajectories, goals):
     plt.xlim(-3.5, 3.5)
     plt.ylim(-3.5, 3.5)
     plt.gca().set_aspect('equal')
-    plt.savefig(f"visualized_[1,1,1,1]/trajectory_{fname}.png")
+    plt.savefig(f"trajectory_{fname}.png")
     plt.close()
 
 animate = False
-def animate_traj(trajectories, goals):
+def animate_traj(trajectories, goals, fname):
     # animation (thank you chat)
     if animate:
         # Define colors for each player
@@ -113,13 +113,69 @@ def animate_traj(trajectories, goals):
 
         # Show animation
         plt.show()
+def lighten_color(color, factor=0.5):
+    # Lighten the color by a factor. factor = 1 returns white
+    r, g, b, a = color  # extract RGB values
+    new_r = r + (1 - r) * factor
+    new_g = g + (1 - g) * factor
+    new_b = b + (1 - b) * factor
+    return (new_r, new_g, new_b, a)
 
-for fname in os.listdir('data_bak_2'):
-    # first import the json file containing relevant players' trajectories
-    if not fname.endswith('[1, 1, 1, 1].json'):
-        continue
-    f = open(f'data_bak_2/{fname}')
+# old function to plot all gt trajectories in a directory
+def plot_all(directory):
+    for fname in os.listdir(directory):
+        # first import the json file containing relevant players' trajectories
+        if not fname.endswith('[1, 1, 1, 1].json'):
+            continue
+        f = open(directory +'/'+ fname)
+        data = json.load(f)
+
+        trajectories, goals = get_trajectory(data)
+        plot_traj(trajectories, goals, fname)
+
+# compare gt and predicted trajectories
+def compare_gt_pred(gt_file, pred_file):
+
+    # get gt and predicted trajectories
+    f = open(gt_file)
     data = json.load(f)
+    gt_trajectories, gt_goals = get_trajectory(data)
+    f = open(pred_file)
+    data = json.load(f)
+    pred_trajectories, pred_goals = get_trajectory(data)
 
-    trajectories, goals = get_trajectory(data)
-    plot_traj(trajectories, goals)
+    colors = {} # stores unique colors for each player
+
+    # plot gt and predicted trajectories
+    plt.figure(figsize=(10, 10))  
+    for i, (player, gt_trajectory) in enumerate(gt_trajectories.items()):
+        # generate color for player
+        if player not in colors:
+            colors[player] = plt.get_cmap("tab10")(i)  # get player color
+        
+        pred_trajectory = pred_trajectories[player]
+        x_vals = [step[0] for step in pred_trajectory]  
+        y_vals = [step[1] for step in pred_trajectory]  
+        x_goal, y_goal = pred_goals[player]  
+        plt.plot(x_vals, y_vals, marker='o', color=colors[player], label=f'Pred Player {player}')
+        plt.plot(x_goal, y_goal, '*', color=colors[player], markersize=10, label=f'gt Player {player} goal')
+
+        lighter_color = lighten_color(colors[player]) # lightens the predicted trajectory color for gt
+        x_vals = [step[0] for step in gt_trajectory]  
+        y_vals = [step[1] for step in gt_trajectory]  
+        x_goal, y_goal = gt_goals[player]  
+        plt.plot(x_vals, y_vals, marker='o', color=lighter_color, label=f'gt Player {player}')
+        
+    
+    plt.xlabel("X Position")
+    plt.ylabel("Y Position")
+    plt.title(f"GT and Predicted Trajectories. Predicted trajectory is darker.")
+    plt.grid(True)
+    plt.xlim(-3.5, 3.5)
+    plt.ylim(-3.5, 3.5)
+    plt.legend() 
+    plt.gca().set_aspect('equal')
+    plt.savefig(f"compare_gt_pred.png")
+    plt.close()
+
+compare_gt_pred('simulation_results_0[1, 1, 1, 1].json', 'simulation_results_0[1, 0, 0, 1].json')
