@@ -10,9 +10,12 @@ function run_example(;
     target,
     save = false
 )
+    initial_states = BlockVector(initial_states, fill(4, N))
+    goals = BlockVector(goals, fill(2, N))
+    mask = Float64.(mask)
     results = Dict()
     # Prepare parameters for the game simulation
-    println("Mask: ", mask)
+    # println("Mask: ", mask)
     parameters = mortar([vcat(goals[2 * (i - 1) + 1:2 * i], i == 1 ? mask : ones(N)) for i in 1:N])
 
     # Progress bar for simulation steps
