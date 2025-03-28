@@ -571,8 +571,8 @@ train_batches = length(train_dataset) / batch_size
 val_batches = length(val_dataset) / batch_size
 test_batches = length(test_dataset) / batch_size
 
-epochs = 100  # Number of training epochs
-global learning_rate = 0.005  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
+epochs = 150  # Number of training epochs
+global learning_rate = 0.01  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
 
 ###############################################################################
 # Early Stopping Hyperparameters
