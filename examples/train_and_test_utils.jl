@@ -269,12 +269,12 @@ function TrajectoryGamesBase.solve_trajectory_game!(
             )
         end
         # loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
-        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 41:2:120) / 40
-
-        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
-        loss_parameter_sum = sum(parameter_value[8:10]) / (N-1)
+        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in (horizon-input_horizon)*d+1 : d : horizon*d) / (horizon - input_horizon)
+        loss_safety = minimum(norm(solution.primals[1][j:j+1] - strategy.target[(player_id-1) * horizon * d + j : (player_id-1) * horizon * d + j + 1]) for j in (horizon-input_horizon) * d + 1 : d : horizon * d for player_id in 2:N)
+        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
+        loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 12 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary
+        loss = 10 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary - loss_safety
 
         return loss
     end
@@ -421,9 +421,6 @@ end
 # Integrate the Solver (Correct Input Format)
 ###############################################################################
 function run_solver(game, parametric_game, target, initial_states, goals, N, horizon, num_sim_steps, mask)
-    initial_states = BlockVector(initial_states, fill(4, 4))
-    goals = BlockVector(goals, fill(2, 4))
-    mask = Float64.(mask)
     grad, loss = run_example(
         game = game,
         parametric_game = parametric_game,
@@ -433,7 +430,7 @@ function run_solver(game, parametric_game, target, initial_states, goals, N, hor
         horizon = horizon,
         num_sim_steps = num_sim_steps,
         mask = mask,
-        target = target
+        target = target,
     )
     return grad, loss  # Return as a single array
 end
@@ -532,7 +529,7 @@ end
 ###############################################################################
 # Problem and Data Dimensions
 ###############################################################################
-const N = 10      # Number of players
+const N = 4      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_horizon = 10  # Number of time steps in input trajectory
@@ -553,29 +550,29 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 ###############################################################################
 # Load Dataset
 ###############################################################################
-# println("Loading dataset...")
-# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train/"
-# train_dataset = load_all_json_data(train_dir)
-# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val/"
-# val_dataset = load_all_json_data(val_dir)
-# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test/"
-# test_dataset = load_all_json_data(test_dir)
-# println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
-# println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
-# println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
+println("Loading dataset...")
+train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N/"
+train_dataset = load_all_json_data(train_dir)
+val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N/"
+val_dataset = load_all_json_data(val_dir)
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N/"
+test_dataset = load_all_json_data(test_dir)
+println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
+println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
+println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
 batch_size = 16
-# train_dataloader = DataLoader(train_dataset, batch_size)
-# val_dataloader = DataLoader(val_dataset, batch_size)
-# test_dataloader = DataLoader(test_dataset, batch_size)
+train_dataloader = DataLoader(train_dataset, batch_size)
+val_dataloader = DataLoader(val_dataset, batch_size)
+test_dataloader = DataLoader(test_dataset, batch_size)
 
-# train_batches = length(train_dataset) / batch_size
-# val_batches = length(val_dataset) / batch_size
-# test_batches = length(test_dataset) / batch_size
+train_batches = length(train_dataset) / batch_size
+val_batches = length(val_dataset) / batch_size
+test_batches = length(test_dataset) / batch_size
 
 epochs = 100  # Number of training epochs
-global learning_rate = 0.01  # Learning rate for the optimizer
+global learning_rate = 0.005  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
 
 ###############################################################################
 # Early Stopping Hyperparameters
@@ -591,4 +588,5 @@ using Random
 seed = 2
 Random.seed!(seed)  # Set the seed to a fixed value
 
-global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience"
+# ihs = input_horizon, isd = input_state_dim, h = horizon
+global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim"
