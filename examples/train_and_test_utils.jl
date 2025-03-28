@@ -533,7 +533,7 @@ const N = 4      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_horizon = 10  # Number of time steps in input trajectory
-const input_state_dim = 4  # State dimension per player in input trajectory
+const input_state_dim = 2  # State dimension per player in input trajectory
 const input_size = N * input_horizon * input_state_dim  # Input size for neural network
 const num_sim_steps = 1  # Number of simulation steps
 
@@ -551,11 +551,14 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N/"
+# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N/"
+# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N/"
+# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N/"
+train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
+val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
+test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
 train_dataset = load_all_json_data(train_dir)
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N/"
 val_dataset = load_all_json_data(val_dir)
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N/"
 test_dataset = load_all_json_data(test_dir)
 println("Training Dataset loaded successfully. Total samples: ", length(train_dataset))
 println("Validation Dataset loaded successfully. Total samples: ", length(val_dataset))
