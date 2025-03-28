@@ -269,10 +269,10 @@ function TrajectoryGamesBase.solve_trajectory_game!(
             )
         end
         # loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
-        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 41:2:120) / 40
+        loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in input_horizon*input_state_dim+1:2:horizon*input_state_dim) / (horizon - input_horizon) / (input_state_dim - 2)
 
-        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[8:10])) / (N-1)
-        loss_parameter_sum = sum(parameter_value[8:10]) / (N-1)
+        loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
+        loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
         loss = 12 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary
 
@@ -533,15 +533,12 @@ end
 # Problem and Data Dimensions
 ###############################################################################
 const N = 10      # Number of players
-const horizon = 30     # Time steps in past trajectory
+const horizon = 15     # Time steps in past trajectory
 const d = 4      # State dimension per player
-const input_horizon = 10  # Number of time steps in input trajectory
+const input_horizon = 5  # Number of time steps in input trajectory
 const input_state_dim = 4  # State dimension per player in input trajectory
 const input_size = N * input_horizon * input_state_dim  # Input size for neural network
 const num_sim_steps = 1  # Number of simulation steps
-
-# Generate all possible masks dynamically (binary representation from 1 to 2^N - 1)
-const masks = [bitstring(i)[end-N+1:end] |> x -> parse.(Int, collect(x)) for i in 1:(2^N - 1)]
 
 ###############################################################################
 # Load Game
