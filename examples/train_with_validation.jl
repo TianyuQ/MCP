@@ -37,7 +37,7 @@ for epoch in 1:epochs
     for (batch_inputs, batch_targets, batch_initial_states, batch_goals, batch_indices) in train_dataloader
         current_masks = [model(batch_inputs[:, i]) for i in 1:batch_size]
         pred_masks = [vcat([1], mask) for mask in current_masks]
-        # println("\nPred Masks: ", [round.(mask, digits=4) for mask in pred_masks])
+        println("\nTrain Masks: ", [round.(mask, digits=4) for mask in pred_masks])
         
         # batch_loss = 0.0
         batch_grads = []
@@ -89,17 +89,16 @@ for epoch in 1:epochs
     total_loss /= train_batches
     training_losses[epoch] = total_loss
     println("\nEpoch $epoch: Training Loss = $total_loss")
-    log_value(tb_logger, "loss", total_loss, step=epoch)
+    log_value(tb_logger, "train_loss", total_loss, step=epoch)
     
     # ---------------------------
     # Validation Phase
     # ---------------------------
-    println("Validating...")
     global val_loss = 0.0
     for (val_inputs, val_targets, val_initial_states, val_goals, val_indices) in val_dataloader
         current_masks = [model(val_inputs[:, i]) for i in 1:batch_size]
         pred_masks = [vcat([1], mask) for mask in current_masks]
-        println("\nVal Masks: ", [round.(mask, digits=4) for mask in pred_masks])
+        # println("\nVal Masks: ", [round.(mask, digits=4) for mask in pred_masks])
         
         for i in 1:batch_size
             results = run_solver(

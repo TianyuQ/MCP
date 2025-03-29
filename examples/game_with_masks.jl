@@ -3,7 +3,6 @@ using DataFrames
 using JSON
 
 # global dir_path = "C:/UT Austin/Research/MCP/data_vel_0_4_15"
-global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_4_15"
 
 # function generate_results(;
 # N = 10, #number of total players
@@ -11,7 +10,7 @@ global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_4_15"
 scenario_num = 200
 total_steps = 1
 target = [0 for _ in 1:N * horizon * d]
-const masks = [ones(N)]
+const game_masks = [ones(N)]
 
 for scenario_id in 0:767
     println("Scenario $scenario_id")
@@ -19,12 +18,11 @@ for scenario_id in 0:767
     data = CSV.read(file_path, DataFrame)
     goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
     initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
-    # masks = [
+    # game_masks = [
     #     # [[1; collect(masks)] for masks in Iterators.product((0:1 for _ in 2:N)...)]
     # ]
-    # masks = [[1; collect(bits)] for bits in Iterators.product(fill((0,1), N-1)...)]
-    # masks = [ones(N)]
-    for mask in masks
+    # game_masks = [[1; collect(bits)] for bits in Iterators.product(fill((0,1), N-1)...)]
+    for mask in game_masks
         # println("Mask: $mask")
         result = run_example(;
             game,

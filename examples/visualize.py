@@ -3,7 +3,7 @@ from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import os
-N=10
+N=4
 
 def get_trajectory(data):
     trajectories = {}
@@ -120,16 +120,16 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = 'data_vel_0_10'
+dir_path = '/home/tq877/Tianyu/player_selection/MCP/data_val_4 _20'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
-    for scenario_id in range(0, 100):
+    for scenario_id in range(512, 640):
         if not fname.startswith(f'simulation_results_{scenario_id}['):
             continue
     # if not fname.startswith('simulation_results_'):
     #     continue
-        f = open(f'{dir_path}\{fname}')
+        f = open(f'{dir_path}/{fname}')
         data = json.load(f)
 
         trajectories, goals = get_trajectory(data)
