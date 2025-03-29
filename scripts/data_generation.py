@@ -48,15 +48,15 @@ def save_to_csv(agents, goals, filename="agents_and_goals.csv"):
 
 if __name__ == "__main__":
     # Parameters
-    N = 10  # Number of agents
-    bounds = (-5, 5)  # Area bounds
-    min_distance = 2  # Minimum distance between agents and goals
+    N = 4  # Number of agents
+    bounds = (-3.5, 3.5)  # Area bounds
+    min_distance = 1.5  # Minimum distance between agents and goals
     max_velocity = 0.5  # Maximum magnitude of initial velocity
 
-    for scenario_id in range(200):
+    for scenario_id in range(768):
         # Generate agents and goals
         agents, goals = generate_agents_and_goals(N, bounds, min_distance, max_velocity)
 
         # Save to CSV
-        save_to_csv(agents, goals, filename=f"/home/tq877/Tianyu/player_selection/MCP/data_vel_0_10/scenario_{scenario_id}.csv")
+        save_to_csv(agents, goals, filename=f"/home/tq877/Tianyu/player_selection/MCP/data_vel_0_4_15/scenario_{scenario_id}.csv")
     

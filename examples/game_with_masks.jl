@@ -2,7 +2,8 @@ using CSV
 using DataFrames
 using JSON
 
-global dir_path = "C:/UT Austin/Research/MCP/data_vel_0_10"
+# global dir_path = "C:/UT Austin/Research/MCP/data_vel_0_4_15"
+global dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_4_15"
 
 # function generate_results(;
 # N = 10, #number of total players
@@ -10,9 +11,9 @@ global dir_path = "C:/UT Austin/Research/MCP/data_vel_0_10"
 scenario_num = 200
 total_steps = 1
 target = [0 for _ in 1:N * horizon * d]
-masks = [ones(N)]
+const masks = [ones(N)]
 
-for scenario_id in 0:199
+for scenario_id in 0:767
     println("Scenario $scenario_id")
     file_path = joinpath(dir_path, "scenario_$scenario_id.csv")
     data = CSV.read(file_path, DataFrame)

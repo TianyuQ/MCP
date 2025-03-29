@@ -274,7 +274,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 10 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary + 0.5 * loss_safety
+        loss = 15 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary + 0.5 * loss_safety
 
         return loss
     end
@@ -530,9 +530,9 @@ end
 # Problem and Data Dimensions
 ###############################################################################
 const N = 4      # Number of players
-const horizon = 30     # Time steps in past trajectory
+const horizon = 15     # Time steps in past trajectory
 const d = 4      # State dimension per player
-const input_horizon = 10  # Number of time steps in input trajectory
+const input_horizon = 5  # Number of time steps in input trajectory
 const input_state_dim = 4  # State dimension per player in input trajectory
 const input_size = N * input_horizon * input_state_dim  # Input size for neural network
 const num_sim_steps = 1  # Number of simulation steps
@@ -551,9 +551,9 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N/"
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N/"
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N/"
+train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _$horizon/"
+val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _$horizon/"
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _$horizon/"
 # train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
 # val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
@@ -565,7 +565,7 @@ println("Validation Dataset loaded successfully. Total samples: ", length(val_da
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
-batch_size = 16
+batch_size = 64
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
@@ -574,8 +574,8 @@ train_batches = length(train_dataset) / batch_size
 val_batches = length(val_dataset) / batch_size
 test_batches = length(test_dataset) / batch_size
 
-epochs = 100  # Number of training epochs
-global learning_rate = 0.01  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
+epochs = 150  # Number of training epochs
+global learning_rate = 0.1  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
 
 ###############################################################################
 # Early Stopping Hyperparameters
@@ -588,7 +588,7 @@ global best_val_loss = Inf      # Initialize best validation loss
 # Set Random Seed for Reproducibility
 ###############################################################################
 using Random
-seed = 2
+seed = 3
 Random.seed!(seed)  # Set the seed to a fixed value
 
 # ihs = input_horizon, isd = input_state_dim, h = horizon

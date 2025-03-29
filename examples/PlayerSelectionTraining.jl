@@ -52,9 +52,8 @@ using Distributions
 
 include("train_and_test_utils.jl")
 include("parametric_masked_game_solver.jl")
-# include("train_new.jl")
+# include("game_with_masks.jl")
 include("train_with_validation.jl")
 # include("test_new.jl")
-# include("game_with_masks.jl")
 
 end # module PlayerSelectionTraining
