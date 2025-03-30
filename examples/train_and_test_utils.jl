@@ -274,7 +274,8 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 20 * loss_similarity + 3 * loss_parameter_sum + 1 * loss_parameter_binary + 0.5 * loss_safety
+        loss = 10 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary 
+        # + 0.5 * loss_safety
 
         return loss
     end
@@ -566,7 +567,7 @@ println("Validation Dataset loaded successfully. Total samples: ", length(val_da
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
-batch_size = 32
+batch_size = 16
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
