@@ -274,7 +274,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 20 * loss_similarity + 3 * loss_parameter_sum + 1 * loss_parameter_binary + 0.5 * loss_safety
+        loss = 20 * loss_similarity + 2 * loss_parameter_sum + 1 * loss_parameter_binary + 0.5 * loss_safety
 
         return loss
     end
@@ -552,12 +552,12 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 ###############################################################################
 println("Loading dataset...")
 dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_$N _$horizon"
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _$horizon/"
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _$horizon/"
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _$horizon/"
-# train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
-# val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
-# test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
+# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _$horizon/"
+# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _$horizon/"
+# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _$horizon/"
+train_dir = "C:/UT Austin/Research/MCP/data_train_$N _$horizon/"
+val_dir = "C:/UT Austin/Research/MCP/data_val_$N _$horizon/"
+test_dir = "C:/UT Austin/Research/MCP/data_test_$N _$horizon/"
 train_dataset = load_all_json_data(train_dir)
 val_dataset = load_all_json_data(val_dir)
 test_dataset = load_all_json_data(test_dir)
