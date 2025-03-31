@@ -60,10 +60,9 @@ function run_example(;
         for player_id in 1:N
             results["Player $player_id Initial State"] = initial_states[4 * (player_id - 1) + 1:4 * player_id]
             results["Player $player_id Goal"] = goals[2 * (player_id - 1) + 1:2 * player_id]
-            # results["Player $player_id Trajectory"] = [sim_steps[step].substrategies[player_id].xs for step in 1:num_sim_steps]
-            # results["Player $player_id Control"] = [sim_steps[step].substrategies[player_id].us for step in 1:num_sim_steps]
-            results["Player $player_id Trajectory"] = [strategy.receding_horizon_strategy.substrategies[player_id].xs for step in 1:num_sim_steps]
-            results["Player $player_id Control"] = [strategy.receding_horizon_strategy.substrategies[player_id].us for step in 1:num_sim_steps]
+            results["Player $player_id Trajectory"] = [strategy.receding_horizon_strategy.substrategies[player_id].xs]
+            results["Player $player_id Control"] = [strategy.receding_horizon_strategy.substrategies[player_id].us]
+            results["Player $player_id Latest Initial State"] = sim_steps[num_sim_steps].substrategies[player_id].xs[2]
         end
 
         return results

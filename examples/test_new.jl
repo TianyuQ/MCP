@@ -24,8 +24,8 @@ end
 
 println("\nLoading best model for testing...")
 # Use the same record_name as in training
-record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed"
-best_model_data = BSON.load("trained_model_bs_16 _ep_150 _lr_0.01 _sd_2.bson")
+# record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed"
+best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/trained_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
 
@@ -34,6 +34,8 @@ safety_score_list = []
 
 for (test_inputs, test_targets, test_initial_states, test_goals, test_indices) in test_dataloader
     current_masks = [best_model(test_inputs[:, i]) for i in 1:batch_size]
+    println("\nPred Masks: ", [round.(mask, digits=4) for mask in current_masks])
+    current_masks = [map(x -> x > 0.05 ? 1 : 0, mask) for mask in current_masks]
     pred_masks = [vcat([1], mask) for mask in current_masks]
     println("\nPred Masks: ", [round.(mask, digits=4) for mask in pred_masks])
     
@@ -64,7 +66,7 @@ for (test_inputs, test_targets, test_initial_states, test_goals, test_indices) i
 end
 
 # Save the results to a file
-results_path = "/home/tq877/Tianyu/player_selection/MCP/examples/similarity_safety_scores.json"
+results_path = "/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/similarity_safety_scores.json"
 open(results_path, "w") do io
     JSON.print(io, Dict("similarity_scores" => similarity_score_list, "safety_scores" => safety_score_list))
 end
