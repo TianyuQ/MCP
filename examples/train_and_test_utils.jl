@@ -602,13 +602,27 @@ global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _p
 
 
 const evaluation_modes = [
-    # "Nearest Neighbor",
-    "Distance Threshold", 
+    "Nearest Neighbor",
+    "Distance Threshold",
     # "Jacobian", 
-    # "Hessian", 
+    # "Hessian",
     # "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
-    "Neural Network",
-    "All"
+    "All",
+    "Neural Network Threshold",
+    "Neural Network Rank",
     ]
+
+const mode_parameters = Dict(
+    "Nearest Neighbor" => [2, 3],
+    "Distance Threshold" => [1, 2, 3],
+    "Jacobian" => [2, 3],
+    "Hessian" => [2, 3],
+    "Cost Evolution" => [2, 3],
+    "Barrier Function" => [2, 3],
+    "Control Barrier Function" => [2, 3],
+    "Neural Network Threshold" => [0.05, 0.1, 0.15],
+    "Neural Network Rank" => [2, 3],
+    "All" => [1],
+)
