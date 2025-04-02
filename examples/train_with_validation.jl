@@ -86,7 +86,7 @@ for epoch in 1:epochs
         next!(progress)
     end
     global total_loss
-    total_loss /= train_batches
+    total_loss /= length(train_dataset)
     training_losses[epoch] = total_loss
     println("\nEpoch $epoch: Training Loss = $total_loss")
     log_value(tb_logger, "train_loss", total_loss, step=epoch)
@@ -115,7 +115,7 @@ for epoch in 1:epochs
         end
     end
     global val_loss
-    val_loss /= val_batches
+    val_loss /= length(val_dataset)
     println("Epoch $epoch: Validation Loss = $val_loss")
     log_value(tb_logger, "val_loss", val_loss, step=epoch)
     

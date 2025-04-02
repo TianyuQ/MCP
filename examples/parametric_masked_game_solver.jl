@@ -63,6 +63,7 @@ function run_example(;
             results["Player $player_id Trajectory"] = [strategy.receding_horizon_strategy.substrategies[player_id].xs]
             results["Player $player_id Control"] = [strategy.receding_horizon_strategy.substrategies[player_id].us]
             results["Player $player_id Latest Initial State"] = sim_steps[num_sim_steps].substrategies[player_id].xs[2]
+            results["Player $player_id Latest Control"] = sim_steps[num_sim_steps].substrategies[player_id].us[1]
         end
 
         return results

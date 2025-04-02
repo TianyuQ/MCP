@@ -20,7 +20,8 @@ def get_trajectory(data):
             continue
 
         # get trajectories and goals of relevant players. doing only first sim_step for now
-        trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"][0]
+        # trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"][0]
+        trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"]
         goals[f"{playerid+1}"] = data[f"Player {playerid+1} Goal"]
     
     return trajectories, goals
@@ -39,7 +40,7 @@ def plot_traj(trajectories, goals):
             colors[player] = plt.get_cmap("tab10")(i)  # Get distinct colors
         
         # plot player trajectory
-        plt.plot(x_vals, y_vals, marker='o', color=colors[player], label=f'Player {player}')
+        plt.plot(x_vals, y_vals, marker='o', color=colors[player], label=f'Player {player}', markersize=3)
         
         # plot goal with the same color
         plt.plot(x_goal, y_goal, '*', color=colors[player], markersize=10, label=f'Player {player} goal')
@@ -47,16 +48,12 @@ def plot_traj(trajectories, goals):
     plt.xlabel("X Position")
     plt.ylabel("Y Position")
     plt.title(f"Trajectories for {fname}")
-    # plt.legend()
+    plt.legend(loc="best")
     plt.grid(True)
-    # plt.xlim(-3.5, 3.5)
-    # plt.ylim(-3.5, 3.5)
-    plt.xlim(-5.5, 5.5)
-    plt.ylim(-5.5, 5.5)
-    # plt.xlim(-3.5, 3.5)
-    # plt.ylim(-3.5, 3.5)
-    plt.xlim(-5.5, 5.5)
-    plt.ylim(-5.5, 5.5)
+    plt.xlim(-3.5, 3.5)
+    plt.ylim(-3.5, 3.5)
+    # plt.xlim(-5.5, 5.5)
+    # plt.ylim(-5.5, 5.5)
     plt.gca().set_aspect('equal')
     plt.savefig(f"trajectory_{fname}.png")
     plt.close()
@@ -120,12 +117,14 @@ def animate_traj(trajectories, goals):
         # Show animation
         plt.show()
 
-dir_path = '/home/tq877/Tianyu/player_selection/MCP/data_val_4 _20'
+dir_path = '/home/tq877/Tianyu/player_selection/MCP/data_test_4 _30'
+# dir_path = '/home/tq877/Tianyu/player_selection/MCP/data_vel_0_4 _30'
 
 for fname in os.listdir(dir_path):
     # first import the json file containing relevant players' trajectories
-    for scenario_id in range(512, 640):
-        if not fname.startswith(f'simulation_results_{scenario_id}['):
+    for scenario_id in range(0, 192):
+        # if not fname.startswith(f'simulation_results_{scenario_id}[1'):
+        if not fname.startswith(f'receding_horizon_'):
             continue
     # if not fname.startswith('simulation_results_'):
     #     continue

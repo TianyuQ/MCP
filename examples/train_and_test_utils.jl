@@ -274,7 +274,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 10 * loss_similarity + 1.5 * loss_parameter_sum + 1 * loss_parameter_binary 
+        loss = 8 * loss_similarity + 2 * loss_parameter_sum + 1 * loss_parameter_binary 
         # + 0.5 * loss_safety
 
         return loss
@@ -552,10 +552,14 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 # Load Dataset
 ###############################################################################
 println("Loading dataset...")
-dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_$N _30"
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _30/"
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _30/"
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30/"
+# dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_$N _30"
+dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_closer"
+# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _30"
+# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _30"
+# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30"
+train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
+val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test"
 # train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
 # val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
@@ -567,16 +571,16 @@ println("Validation Dataset loaded successfully. Total samples: ", length(val_da
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
-batch_size = 1
+batch_size = 32
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
 
-train_batches = length(train_dataset) / batch_size
-val_batches = length(val_dataset) / batch_size
-test_batches = length(test_dataset) / batch_size
+# train_batches = length(train_dataset) / batch_size
+# val_batches = length(val_dataset) / batch_size
+# test_batches = length(test_dataset) / batch_size
 
-epochs = 100  # Number of training epochs
+epochs = 80  # Number of training epochs
 global learning_rate = 0.01  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
 
 ###############################################################################
@@ -597,10 +601,9 @@ Random.seed!(seed)  # Set the seed to a fixed value
 global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim"
 
 
-# NN=nearest neighbor
 const evaluation_modes = [
     # "Nearest Neighbor",
-    # "Distance Threshold", 
+    "Distance Threshold", 
     # "Jacobian", 
     # "Hessian", 
     # "Cost Evolution",
