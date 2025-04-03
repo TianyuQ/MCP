@@ -19,8 +19,8 @@ function get_trajectory(data, N)
     return trajectories, goals, controls
 end
 
-function distance_threshold(trajectories, ego_player_id, threshold, player_num)
-    mask = zeros(player_num) # mask of size player_num
+function distance_threshold(trajectories, ego_player_id, threshold, player_num, TOTAL_PLAYERS=4) # player_num is how many players we care about
+    mask = zeros(TOTAL_PLAYERS) # mask of size player_num
     mask[ego_player_id] = 1 # ego player is always in the mask
     
     # loop through the remaining players and check distance
@@ -54,7 +54,7 @@ function nearest_neighbors(trajectories, ego_player_id, player_num, TOTAL_PLAYER
         mask[min_index] = 1
         distances[min_index] = Inf
     end
-    
+
     return mask
 end
 
