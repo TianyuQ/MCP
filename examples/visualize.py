@@ -3,9 +3,10 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import PIL
 import os
+
 N=4
 
-def get_trajectory(data):
+def get_trajectory(data, sim_steps = "all"):
     trajectories = {}
     goals = {}
     # loop through parameters in the dict
@@ -18,12 +19,22 @@ def get_trajectory(data):
             data.pop(f"Player {playerid+1} Trajectory", None)
             data.pop(f"Player {playerid+1} Control", None)
             continue
+        if sim_steps == "all":
+        # get trajectories and goals of relevant players.
+            trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"]
+        else:
+            # get trajectories and goals of relevant players.
+            if not isinstance(sim_steps, int): # make sure that sim_steps is an integer
+                raise ValueError("sim_steps must be an integer or 'all'")
+            else:
+                trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"][:sim_steps]
 
-        # get trajectories and goals of relevant players. doing only first sim_step for now
-        trajectories[f"{playerid+1}"] = data[f"Player {playerid+1} Trajectory"][0]
+        # get goals of relevant players.
         goals[f"{playerid+1}"] = data[f"Player {playerid+1} Goal"]
-    
-    return trajectories, goals
+
+        # get ego player masks
+    masks = data[f"Player {1} Mask"]
+    return trajectories, goals, masks
 
 def plot_traj(trajectories, goals, fname):
     colors = {}
@@ -178,4 +189,62 @@ def compare_gt_pred(gt_file, pred_file):
     plt.savefig(f"compare_gt_pred.png")
     plt.close()
 
-compare_gt_pred('simulation_results_0[1, 1, 1, 1].json', 'simulation_results_0[1, 0, 0, 1].json')
+#compare_gt_pred('simulation_results_0[1, 1, 1, 1].json', 'simulation_results_0[1, 0, 0, 1].json')
+
+def plot_over_time_with_mask(file):
+    # load json data
+    with open(file) as f:
+        data = json.load(f)
+
+    # extract trajectories, goals, and masks
+    trajectories, _, masks = get_trajectory(data)
+
+    # total simulation steps
+    sim_steps = len(trajectories['1'])  # assume all players have the same number of steps
+
+    for i in range(sim_steps):
+        plt.figure(figsize=(10, 10))
+
+        for player, trajectory in trajectories.items():
+            player_id = int(player)  # convert player id to integer
+
+            # set color for the current position based on the mask
+            if i < len(masks) and masks[i][player_id - 1] == 1:
+                current_color = "blue" if player_id == 1 else "red"  # ego: blue, others: red
+            else:
+                current_color = "blue" if player_id == 1 else "gray"  # ego: blue, others: gray
+
+            # plot up to 10 previous steps
+            start_idx = max(0, i - 9)  # limit to the last 10 steps
+
+            # plot trajectory segments step-by-step
+            for step_idx in range(start_idx, i + 1):
+                # color each segment based on the mask
+                if step_idx < len(masks) and masks[step_idx][player_id - 1] == 1:
+                    segment_color = "blue" if player_id == 1 else "red"
+                else:
+                    segment_color = "blue" if player_id == 1 else "gray"
+
+                # plot segment if within bounds
+                if step_idx < i:
+                    x_vals = [trajectory[step_idx][0], trajectory[step_idx + 1][0]]
+                    y_vals = [trajectory[step_idx][1], trajectory[step_idx + 1][1]]
+                    plt.plot(x_vals, y_vals, color=segment_color)
+
+            # enlarge current position
+            plt.plot(trajectory[i][0], trajectory[i][1], marker='o', color=current_color, markersize=10)
+
+        plt.xlabel("X Position")
+        plt.ylabel("Y Position")
+        plt.title(f"Trajectories at Simulation Step {i+1}")
+        plt.grid(True)
+        plt.xlim(-3.5, 3.5)
+        plt.ylim(-3.5, 3.5)
+        plt.gca().set_aspect('equal')
+        plt.savefig(f"receding_plots/trajectory_step_{i+1}.png")
+        plt.close()
+
+
+# test
+file = 'receding_horizon_trajectories_[170]_All.json'
+plot_over_time_with_mask(file)
