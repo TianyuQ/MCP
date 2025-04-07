@@ -1,7 +1,7 @@
 
 using JSON3, LinearAlgebra
 
-fp = "baseline_data\\data_test\\simulation_results_0[1, 1, 1, 1].json"
+fp = "receding_horizon_trajectories_[170]_All.json"
 data = JSON3.read(open(fp, "r"))
 
 function get_trajectory(data, N)
@@ -12,7 +12,7 @@ function get_trajectory(data, N)
     # loop through parameters in the dictionary
     for playerid in 1:N
         # Get trajectories, goals, control of relevant players (only first sim_step for now)
-        trajectories[string(playerid)] = data["Player $playerid Trajectory"][1]
+        trajectories[string(playerid)] = data["Player $playerid Trajectory"]
         goals[string(playerid)] = data["Player $playerid Goal"]
         controls[string(playerid)] = data["Player $playerid Control"]
     end
@@ -58,10 +58,29 @@ function nearest_neighbors(trajectories, ego_player_id, player_num, TOTAL_PLAYER
     return mask
 end
 
+function jacobian(input_traj, trajectory, mode, sim_step, mode_parameter)
+    mask = zeros(N-1)
+    for player_id in 2:N
+        del_px = trajectory[1][end-3:end-2] - trajectory[player_id][end-3:end-2]
+    end
+
+end
+
+
+print(trajectories["1"][1][end-3:end-2])
+
+
+
+
+
+
+
+
+
 # test
-trajectories, goals, controls = get_trajectory(data, 4)
-mask = distance_threshold(trajectories, 1, 4, 4)
-mask = nearest_neighbors(trajectories, 1, 3)
+# trajectories, goals, controls = get_trajectory(data, 4)
+# mask = distance_threshold(trajectories, 1, 4, 4)
+# mask = nearest_neighbors(trajectories, 1, 3)
 
 
 # for later
@@ -72,3 +91,5 @@ mask = nearest_neighbors(trajectories, 1, 3)
 #         norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
 #     end
 # end
+
+
