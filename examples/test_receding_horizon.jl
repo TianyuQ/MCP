@@ -77,7 +77,8 @@ end
 println("\nLoading best model for testing...")
 # Use the same record_name as in training
 # best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/trained_model.bson")
-best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_16 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
+# best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_16 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
+best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_32 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
 

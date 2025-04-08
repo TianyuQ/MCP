@@ -1,7 +1,5 @@
 import json
-from cv2 import norm
 import numpy as np
-from sympy import N
 
 
 def trajectory_similarity_analysis(trajectory, ref_trajectory):

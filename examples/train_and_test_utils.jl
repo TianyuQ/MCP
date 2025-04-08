@@ -274,7 +274,8 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
-        loss = 8 * loss_similarity + 2 * loss_parameter_sum + 1 * loss_parameter_binary 
+        # loss = 8 * loss_similarity + 1 * loss_parameter_sum + 0 * loss_parameter_binary 
+        loss = loss_weight[1] * loss_similarity + loss_weight[2] * loss_parameter_sum + loss_weight[3] * loss_parameter_binary
         # + 0.5 * loss_safety
 
         return loss
@@ -559,9 +560,10 @@ dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_closer"
 # test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30"
 train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
 val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_noncooperative"
-# train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
-# val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
+# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_cooperative/"
+test_dir = "C:/UT Austin/Research/MCP/data_closer_test_cooperative"
+train_dir = "C:/UT Austin/Research/MCP/data_train_$N _30/"
+val_dir = "C:/UT Austin/Research/MCP/data_val_$N _30/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
 train_dataset = load_all_json_data(train_dir)
 val_dataset = load_all_json_data(val_dir)
@@ -580,8 +582,9 @@ test_dataloader = DataLoader(test_dataset, batch_size)
 # val_batches = length(val_dataset) / batch_size
 # test_batches = length(test_dataset) / batch_size
 
-epochs = 80  # Number of training epochs
+epochs = 100  # Number of training epochs
 global learning_rate = 0.01  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
+const loss_weight = [8, 2, 1]
 
 ###############################################################################
 # Early Stopping Hyperparameters
@@ -598,19 +601,21 @@ seed = 3
 Random.seed!(seed)  # Set the seed to a fixed value
 
 # ihs = input_horizon, isd = input_state_dim, h = horizon
-global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim"
+global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim _w_$loss_weight"
+
+
 
 
 const evaluation_modes = [
     # "Nearest Neighbor",
-    "Distance Threshold",
+    # "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
     # "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
     # "All",
-    # "Neural Network Threshold",
+    "Neural Network Threshold",
     # "Neural Network Rank",
     ]
 
@@ -623,7 +628,8 @@ const mode_parameters = Dict(
     "Cost Evolution" => [2, 3],
     "Barrier Function" => [2, 3],
     "Control Barrier Function" => [2, 3],
-    "Neural Network Threshold" => [0.05, 0.1, 0.15],
+    # "Neural Network Threshold" => [0.05, 0.1, 0.15],
+    "Neural Network Threshold" => [0.5],
     "Neural Network Rank" => [2, 3],
     "All" => [1],
 )
