@@ -559,7 +559,7 @@ dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_closer"
 # test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30"
 train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
 val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
-test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test"
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_noncooperative"
 # train_dir = "C:/UT Austin/Research/MCP/data_train_$N/"
 # val_dir = "C:/UT Austin/Research/MCP/data_val_$N/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
@@ -602,21 +602,22 @@ global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _p
 
 
 const evaluation_modes = [
-    "Nearest Neighbor",
+    # "Nearest Neighbor",
     "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
     # "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
-    "All",
-    "Neural Network Threshold",
-    "Neural Network Rank",
+    # "All",
+    # "Neural Network Threshold",
+    # "Neural Network Rank",
     ]
 
 const mode_parameters = Dict(
     "Nearest Neighbor" => [2, 3],
-    "Distance Threshold" => [1, 2, 3],
+    "Distance Threshold" => [1, 3],
+    # "Distance Threshold" => [1.5, 2, 2.5],
     "Jacobian" => [2, 3],
     "Hessian" => [2, 3],
     "Cost Evolution" => [2, 3],

@@ -27,7 +27,7 @@ function mask_computation(input_traj, trajectory, mode, sim_step, mode_parameter
             mask = mask_computation(input_traj, trajectory, "Distance Threshold", sim_step, 2)
         else
             mask = best_model(input_traj)
-            println("Pred Mask: ", round.(mask, digits=4))
+            # println("Pred Mask: ", round.(mask, digits=4))
             mask = map(x -> x > mode_parameter ? 1 : 0, mask)
             # println("Pred Mask: ", mask)
         end
@@ -50,17 +50,17 @@ function mask_computation(input_traj, trajectory, mode, sim_step, mode_parameter
         end
         ranked_indices = rank_array_from_small_to_large(distances)
         for i in 1:mode_parameter-1
-            mask[ranked_indices[i]-1] = 1
+            mask[ranked_indices[i]] = 1
         end
     elseif mode == "Neural Network Rank"
         if sim_step <= 10
-            mask = mask_computation(input_traj, trajectory, "Distance Threshold", sim_step, 2)
+            mask = mask_computation(input_traj, trajectory, "Nearest Neighbor", sim_step, mode_parameter)
         else
             model_mask = best_model(input_traj)
             ranked_indices = rank_array_from_large_to_small(model_mask)
             mask = zeros(N-1)
-            for i in 1:mode_parameter
-                mask[ranked_indices[i]-1] = 1
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
             end
         end
     else

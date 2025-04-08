@@ -1,6 +1,7 @@
 import json
 from cv2 import norm
 import numpy as np
+from sympy import N
 
 
 def trajectory_similarity_analysis(trajectory, ref_trajectory):
@@ -8,13 +9,6 @@ def trajectory_similarity_analysis(trajectory, ref_trajectory):
     for step in range(len(trajectory[1])):
         similarity += np.linalg.norm(np.array(trajectory[1][step][:2]) - np.array(ref_trajectory[1][step][:2]))
     return round(similarity / len(trajectory[1]), 3)
-    
-
-# def trajectory_smoothness_analysis(trajectory):
-#     angle = 0
-#     for step in range(len(trajectory[1]) - 1):
-#         angle += np.arccos(np.dot(trajectory[1][step][:2], trajectory[1][step + 1][:2]) / (np.linalg.norm(trajectory[1][step][:2]) * np.linalg.norm(trajectory[1][step + 1][:2])))
-#     return round(angle / (len(trajectory[1]) - 1), 3)
 
 def trajectory_smoothness_analysis(trajectory):
     positions = np.array(trajectory[1])  # assuming trajectory[1] contains list of [x, y, ...] points
@@ -27,6 +21,12 @@ def trajectory_smoothness_analysis(trajectory):
         diff = dir2 - dir1
         smoothness += np.linalg.norm(diff)  # L2 norm of direction change
     return round(smoothness / len(trajectory[1]), 3)
+
+def trajectory_length_analysis(trajectory):
+    length = 0
+    for step in range(len(trajectory[1]) - 1):
+        length += np.linalg.norm(np.array(trajectory[1][step][:2]) - np.array(trajectory[1][step + 1][:2]))
+    return round(length, 3)
 
 def safety_analysis(trajectory):
     min_distance = np.inf
@@ -47,8 +47,11 @@ def quantile_analysis(array):
     q3 = np.quantile(array, 0.75)
     return q1, q2, q3
 
+def mean_analysis(array):
+    mean = np.mean(array)
+    return mean
 
-methods = [
+modes = [
     "Nearest Neighbor",
     "Distance Threshold", 
     "Jacobian", 
@@ -56,24 +59,30 @@ methods = [
     "Cost Evolution",
     "Barrier Function",
     "Control Barrier Function",
-    "Neural Network",
+    "Neural Network Threshold",
+    "Neural Network Rank",
     "All"
 ]
 
-result_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test"
+result_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_noncooperative"
 
 traj_similarity_list = []
 traj_smoothness_list = []
+traj_length_list = []
 safety_list = []
 mask_sum_list = []
 
-# method = "Distance Threshold"
-# method = "Neural Network"
-method = "All"
+mode = "Distance Threshold"
+# mode = "Nearest Neighbor"
+# mode = "Neural Network Rank"
+# mode = "Neural Network Threshold"
+# mode = "All"
+
+mode_parameter = 3
 
 for scenario_id in range(160, 192):
-    result_file = f"{result_dir}/receding_horizon_trajectories_[{scenario_id}]_{method}.json"
-    all_file = f"{result_dir}/receding_horizon_trajectories_[{scenario_id}]_All.json"
+    result_file = f"{result_dir}/receding_horizon_trajectories_[{scenario_id}]_[{mode}]_[{mode_parameter}].json"
+    all_file = f"{result_dir}/receding_horizon_trajectories_[{scenario_id}]_[All]_[1].json"
     with open(result_file, 'r') as f:
         data = json.load(f)
     with open(all_file, 'r') as f:
@@ -93,15 +102,13 @@ for scenario_id in range(160, 192):
     masks = data[f'Player 1 Mask']
     traj_similarity_list.append(trajectory_similarity_analysis(trajectories, ref_trajectories))
     traj_smoothness_list.append(trajectory_smoothness_analysis(trajectories))
+    traj_length_list.append(trajectory_length_analysis(trajectories))
     safety_list.append(safety_analysis(trajectories))
     mask_sum_list.append(mask_sum_analysis(masks))
 
-print("Method:", method)
-print("Trajectory similarity analysis results:", quantile_analysis(traj_similarity_list))
-print("Trajectory smoothness analysis results:", quantile_analysis(traj_smoothness_list))
-print("Safety analysis results:", quantile_analysis(safety_list))
-print("Mask sum analysis results:", quantile_analysis(mask_sum_list))
-
-
-
-        # traj_similarity_list.append(trajectory_similarity_analysis(trajectories[1], ref_trajectories[1]))
+print(f"Mode: {mode}, Parameter: {mode_parameter}")
+print("Trajectory similarity analysis results:", quantile_analysis(traj_similarity_list), "Mean:", mean_analysis(traj_similarity_list))
+print("Trajectory smoothness analysis results:", quantile_analysis(traj_smoothness_list), "Mean:", mean_analysis(traj_smoothness_list))
+print("Trajectory length analysis results:", quantile_analysis(traj_length_list), "Mean:", mean_analysis(traj_length_list))
+print("Safety analysis results:", quantile_analysis(safety_list), "Mean:", mean_analysis(safety_list))
+print("Mask sum analysis results:", quantile_analysis(mask_sum_list), "Mean:", mean_analysis(mask_sum_list))
