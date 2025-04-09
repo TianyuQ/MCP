@@ -1,61 +1,21 @@
-
 using JSON3, LinearAlgebra
 
 fp = "receding_horizon_trajectories_[170]_All.json"
 data = JSON3.read(open(fp, "r"))
 
 function get_trajectory(data, N)
-    trajectories = Dict{String, Any}()
-    goals = Dict{String, Any}()
-    controls = Dict{String, Any}()
+    trajectories = Dict{Int, Any}()
+    goals = Dict{Int, Any}()
+    controls = Dict{Int, Any}()
 
     # loop through parameters in the dictionary
     for playerid in 1:N
         # Get trajectories, goals, control of relevant players (only first sim_step for now)
-        trajectories[string(playerid)] = data["Player $playerid Trajectory"]
-        goals[string(playerid)] = data["Player $playerid Goal"]
-        controls[string(playerid)] = data["Player $playerid Control"]
+        trajectories[playerid] = data["Player $playerid Trajectory"]
+        goals[playerid] = data["Player $playerid Goal"]
+        controls[playerid] = data["Player $playerid Control"]
     end
     return trajectories, goals, controls
-end
-
-function distance_threshold(trajectories, ego_player_id, threshold, player_num, TOTAL_PLAYERS=4) # player_num is how many players we care about
-    mask = zeros(TOTAL_PLAYERS) # mask of size player_num
-    mask[ego_player_id] = 1 # ego player is always in the mask
-    
-    # loop through the remaining players and check distance
-    for playerid in 1:player_num
-        if playerid != ego_player_id
-            if norm(trajectories[string(ego_player_id)][1:2] - trajectories[string(playerid)][1:2]) < threshold
-                mask[playerid] = 1
-            end
-        end
-    end
-    return mask
-end
-
-function nearest_neighbors(trajectories, ego_player_id, player_num, TOTAL_PLAYERS=4) # player_num is how many players we care about
-    mask = zeros(TOTAL_PLAYERS) # mask of size TOTAL_PLAYERS
-    mask[ego_player_id] = 1 # ego player is always in the mask
-    distances = zeros(TOTAL_PLAYERS)
-    
-    # loop through the remaining players and check distance
-    for playerid in 1:TOTAL_PLAYERS
-        if playerid != ego_player_id
-            distances[playerid] = norm(trajectories[string(ego_player_id)][1:2] - trajectories[string(playerid)][1:2])
-        end
-        
-    end
-    
-    # find the (player_num) nearest neighbors. if player_num < TOTAL_PLAYERS, then the rest will be ignored
-    for i in 1:player_num
-        min_distance = minimum(distances)
-        min_index = argmin(distances)
-        mask[min_index] = 1
-        distances[min_index] = Inf
-    end
-
-    return mask
 end
 
 function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_parameter)
@@ -106,24 +66,50 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
     elseif mode == "Jacobian"
         if sim_step == 1
             mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # mode_parameter for initial nearest neighbor is all players for now
+        else
+            mask = zeros(N-1)
+            delta_t = 0.1 # hard coded for now
+            norm_costs = zeros(N-1)
+            for player_id in 2:N
+                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                delta_px = (state_differences[1] + delta_t * state_differences[3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
+                delta_py = (state_differences[2] + delta_t * state_differences[4]) ^ 2
+
+                delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
+                delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
+                D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
+                J1 = 1/(D ^ 2) * 2 * delta_vx * delta_t # partial derivative of l_col with respect to aj_{k,x}
+                J2 = 1/(D ^ 2) * 2 * delta_vy * delta_t # partial derivative of l_col with respect to aj_{k,y}
+                norm_costs[player_id-1] = norm([J1, J2]) # [J1, J2] is the jacobian of the cost function with respect to the control of player_id
+            end
+            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
         end
-        mask = zeros(N-1)
-        delta_t = 0.01 # hard coded for now
-        norm_costs = zeros(N-1)
-        for player_id in 2:N
-            state_differences = (trajectory[1] - trajectory[player_id]) # ex: pi_{k,x} - pj_{k,x}
-            delta_px = (state_differences[1] + delta_t * trajectory[player_id][3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
-            delta_py = (state_differences[2] + delta_t * trajectory[player_id][4]) ^ 2
-            delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
-            delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
-            D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
-            J1 = -1/(D ^ 2) * 2 * delta_vx * -delta_t # partial derivative of l_col with respect to aj_{k,x}
-            J2 = -1/(D ^ 2) * 2 * delta_vy * -delta_t # partial derivative of l_col with respect to aj_{k,y}
-            norm_costs[player_id-1] = norm([J1, J2]) # [J1, J2] is the jacobian of the cost function with respect to the control of player_id
-        end
-        ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
-        for i in 1:mode_parameter-1
-            mask[ranked_indices[i]] = 1
+    elseif mode == "Hessian"
+        if sim_step == 1
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # mode_parameter for initial nearest neighbor is all players for now
+        else
+            mask = zeros(N-1)
+            delta_t = 0.1 # hard coded for now
+            norm_costs = zeros(N-1)
+            for player_id in 2:N
+                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                delta_px = (state_differences[1] + delta_t * state_differences[3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
+                delta_py = (state_differences[2] + delta_t * state_differences[4]) ^ 2
+                delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
+                delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
+                D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
+                H11 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vx ^ 2 - D) # terms of the hessian
+                H12 = 8 * delta_t ^ 2 / D ^ 3 * delta_vx * delta_vy
+                H22 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vy ^ 2 - D)
+                norm_costs[player_id-1] = norm([H11 H12; H12 H22]) # Frobenius norm of the Hessian
+            end
+            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
         end
     else
         error("Invalid mode: $mode")
@@ -133,14 +119,14 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
 end
 
 
-
-
-
-
-
 # test
-# trajectories, goals, controls = get_trajectory(data, 4)
-# mask = distance_threshold(trajectories, 1, 4, 4)
+trajectories, goals, controls = get_trajectory(data, 4)
+flattened_trajectories = Dict{Int, Vector{Float64}}()
+for player_id in 1:4
+    flattened_trajectories[player_id] = vcat(trajectories[player_id]...)
+end
+#println(controls[2][10][1])
+mask = mask_computation(flattened_trajectories, flattened_trajectories, controls, "Jacobian", 10, 2)
 # mask = nearest_neighbors(trajectories, 1, 3)
 
 
@@ -154,3 +140,41 @@ end
 # end
 
 
+#function distance_threshold(trajectories, ego_player_id, threshold, player_num, TOTAL_PLAYERS=4) # player_num is how many players we care about
+    #     mask = zeros(TOTAL_PLAYERS) # mask of size player_num
+    #     mask[ego_player_id] = 1 # ego player is always in the mask
+        
+    #     # loop through the remaining players and check distance
+    #     for playerid in 1:player_num
+    #         if playerid != ego_player_id
+    #             if norm(trajectories[string(ego_player_id)][1:2] - trajectories[string(playerid)][1:2]) < threshold
+    #                 mask[playerid] = 1
+    #             end
+    #         end
+    #     end
+    #     return mask
+    # end
+    
+    # function nearest_neighbors(trajectories, ego_player_id, player_num, TOTAL_PLAYERS=4) # player_num is how many players we care about
+    #     mask = zeros(TOTAL_PLAYERS) # mask of size TOTAL_PLAYERS
+    #     mask[ego_player_id] = 1 # ego player is always in the mask
+    #     distances = zeros(TOTAL_PLAYERS)
+        
+    #     # loop through the remaining players and check distance
+    #     for playerid in 1:TOTAL_PLAYERS
+    #         if playerid != ego_player_id
+    #             distances[playerid] = norm(trajectories[string(ego_player_id)][1:2] - trajectories[string(playerid)][1:2])
+    #         end
+            
+    #     end
+        
+    #     # find the (player_num) nearest neighbors. if player_num < TOTAL_PLAYERS, then the rest will be ignored
+    #     for i in 1:player_num
+    #         min_distance = minimum(distances)
+    #         min_index = argmin(distances)
+    #         mask[min_index] = 1
+    #         distances[min_index] = Inf
+    #     end
+    
+    #     return mask
+    # end
