@@ -111,12 +111,39 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 mask[ranked_indices[i]] = 1
             end
         end
+    elseif mode == "Cost Evolution"
+        if sim_step == 1
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # can't compute cost evolution at sim_step 1
+        else
+            mask = zeros(N-1)
+            mu = 1 # hard coded for now
+            cost_evolution_values = zeros(N-1)
+            for player_id in 2:N
+                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                D = sum(state_differences .^ 2) # denominator of mu/norm(xi_k - xj_k)^2
+        
+                # x_k-1 values (prior states) for player_id
+                state_differences_prev = (trajectory[1][end-7:end-4] - trajectory[player_id][end-7:end-4]) # state difference for previous sim_step
+                D_prev = sum(state_differences_prev .^ 2) # denominator of mu/norm(xi_k-1 - xj_k-1)^2
+                
+                cost_evolution_values[player_id-1] = mu / D - mu / D_prev # cost evolution value for player_id
+            end
+            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
+        end
     else
         error("Invalid mode: $mode")
     end
 
     return mask
 end
+
+# delta_vx = (state_differences[3] + delta_t * control[player_id][sim_step][1]) ^ 2    TEMPORARY, JUST SO MINE WORKS
+# delta_vy = (state_differences[4] + delta_t * control[player_id][sim_step][2]) ^ 2
+
+
 
 
 # test
