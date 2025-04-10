@@ -128,7 +128,7 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 
                 cost_evolution_values[player_id-1] = mu / D - mu / D_prev # cost evolution value for player_id
             end
-            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            ranked_indices = rank_array_from_large_to_small(cost_evolution_values) # rank the players based on the norm of the jacobian
             for i in 1:mode_parameter-1
                 mask[ranked_indices[i]] = 1
             end
