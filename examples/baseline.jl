@@ -2,7 +2,7 @@ using JSON3, LinearAlgebra
 
 fp = "receding_horizon_trajectories_[170]_All.json"
 data = JSON3.read(open(fp, "r"))
-
+N=4 # for testing
 function get_trajectory(data, N)
     trajectories = Dict{Int, Any}()
     goals = Dict{Int, Any}()
@@ -106,7 +106,7 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 H22 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vy ^ 2 - D)
                 norm_costs[player_id-1] = norm([H11 H12; H12 H22]) # Frobenius norm of the Hessian
             end
-            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the F norm of the hessian
             for i in 1:mode_parameter-1
                 mask[ranked_indices[i]] = 1
             end
@@ -128,10 +128,46 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 
                 cost_evolution_values[player_id-1] = mu / D - mu / D_prev # cost evolution value for player_id
             end
-            ranked_indices = rank_array_from_large_to_small(cost_evolution_values) # rank the players based on the norm of the jacobian
+            ranked_indices = rank_array_from_large_to_small(cost_evolution_values) # rank the players
             for i in 1:mode_parameter-1
                 mask[ranked_indices[i]] = 1
             end
+        end
+    elseif mode == "BF"
+        mask = zeros(N-1)
+        bf_values = zeros(N-1)
+        R = 1 # may need to change
+        kappa = 1 # may need to change
+        for playerid in 2:N
+            position_difference = trajectory[1][end-3:end-2] - trajectory[playerid][end-3:end-2]# xi - xj
+            velocity_difference = trajectory[1][end-1:end] - trajectory[playerid][end-1:end] # vi - vj
+            h = sum(position_difference.^2) - R^2 # ||xi - xj||^2
+            h_dot = 2 * position_difference' * velocity_difference # 2 * (xi - xj)' * (vi - vj)
+            f_BF = h_dot+kappa*h_dot
+            bf_values[playerid-1] = f_BF # f_BF for player_id
+        end
+        ranked_indices = rank_array_from_small_to_large(bf_values) # rank the players based on BF values (small = danger)
+        for i in 1:mode_parameter-1
+            mask[ranked_indices[i]] = 1
+        end
+    elseif mode == "CBF"
+        mask = zeros(N-1)
+        cbf_values = zeros(N-1)
+        R = 1 # may need to change
+        kappa = 1 # may need to change
+        for playerid in 2:N
+            position_difference = trajectory[1][end-3:end-2] - trajectory[playerid][end-3:end-2] # xi - xj
+            velocity_difference = trajectory[1][end-1:end] - trajectory[playerid][end-1:end] # vi - vj
+            acceleration_difference = control[1] - control[playerid] # ai - aj
+            h = sum(position_difference.^2) - R^2 # ||xi - xj||^2
+            h_dot = 2 * position_difference' * velocity_difference # 2 * (xi - xj)' * (vi - vj)
+            h_ddot = 2 * (velocity_difference' * velocity_difference + position_difference' * acceleration_difference) # 2 * (vi - vj)' * (vi - vj) + 2 * (xi - xj)' * (ai - aj)
+            f_CBF = h_ddot + 2 * kappa * h_dot + kappa^2 * h # CBF value for ego w.r.t player_id
+            cbf_values[playerid-1] = f_CBF # f_CBF for player_id
+        end
+        ranked_indices = rank_array_from_small_to_large(cbf_values) # rank the players based on CBF values (small = danger)
+        for i in 1:mode_parameter-1
+            mask[ranked_indices[i]] = 1
         end
     else
         error("Invalid mode: $mode")
@@ -140,6 +176,10 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
     return mask
 end
 
+function rank_array_from_small_to_large(array)
+    sorted_indices = sortperm(array)
+    return sorted_indices
+end
 # delta_vx = (state_differences[3] + delta_t * control[player_id][sim_step][1]) ^ 2    TEMPORARY, JUST SO MINE WORKS
 # delta_vy = (state_differences[4] + delta_t * control[player_id][sim_step][2]) ^ 2
 
@@ -153,7 +193,7 @@ for player_id in 1:4
     flattened_trajectories[player_id] = vcat(trajectories[player_id]...)
 end
 #println(controls[2][10][1])
-mask = mask_computation(flattened_trajectories, flattened_trajectories, controls, "Jacobian", 10, 2)
+mask = mask_computation(flattened_trajectories, flattened_trajectories, controls, "CBF", 10, 3)
 # mask = nearest_neighbors(trajectories, 1, 3)
 
 
