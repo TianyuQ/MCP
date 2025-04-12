@@ -132,7 +132,46 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 mask[ranked_indices[i]] = 1
             end
         end
-        
+    elseif mode == "Barrier Function"
+        mask = zeros(N-1)
+        bf_values = zeros(N-1)
+        R = 0.5 # may need to change
+        kappa = 5.0 # may need to change
+        for playerid in 2:N
+            position_difference = trajectory[1][end-3:end-2] - trajectory[playerid][end-3:end-2]# xi - xj
+            velocity_difference = trajectory[1][end-1:end] - trajectory[playerid][end-1:end] # vi - vj
+            h = sum(position_difference.^2) - R^2 # ||xi - xj||^2 - R^2
+            h_dot = 2 * position_difference' * velocity_difference # 2 * (xi - xj)' * (vi - vj)
+            f_BF = h_dot+kappa*h
+            bf_values[playerid-1] = f_BF # f_BF for player_id
+        end
+        ranked_indices = rank_array_from_small_to_large(bf_values) # rank the players based on BF values (small = danger)
+        for i in 1:mode_parameter-1
+            mask[ranked_indices[i]] = 1
+        end
+    elseif mode == "Control Barrier Function"
+        if sim_step == 1
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # can't compute cost evolution at sim_step 1
+        else
+            mask = zeros(N-1)
+            cbf_values = zeros(N-1)
+            R = 0.5 # may need to change
+            kappa = 5.0 # may need to change
+            for playerid in 2:N
+                position_difference = trajectory[1][end-3:end-2] - trajectory[playerid][end-3:end-2] # xi - xj
+                velocity_difference = trajectory[1][end-1:end] - trajectory[playerid][end-1:end] # vi - vj
+                acceleration_difference = control[1] - control[playerid] # ai - aj
+                h = sum(position_difference.^2) - R^2 # ||xi - xj||^2 - R^2
+                h_dot = 2 * position_difference' * velocity_difference # 2 * (xi - xj)' * (vi - vj)
+                h_ddot = 2 * (velocity_difference' * velocity_difference + position_difference' * acceleration_difference) # 2 * (vi - vj)' * (vi - vj) + 2 * (xi - xj)' * (ai - aj)
+                f_CBF = h_ddot + 2 * kappa * h_dot + kappa^2 * h # CBF value for ego w.r.t player_id
+                cbf_values[playerid-1] = f_CBF # f_CBF for player_id
+            end
+            ranked_indices = rank_array_from_small_to_large(cbf_values) # rank the players based on CBF values (small = danger)
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
+        end
     else
         error("Invalid mode: $mode")
     end
