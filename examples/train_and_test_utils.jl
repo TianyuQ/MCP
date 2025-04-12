@@ -531,7 +531,7 @@ end
 ###############################################################################
 # Problem and Data Dimensions
 ###############################################################################
-const N = 4      # Number of players
+const N = 10      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_horizon = 10  # Number of time steps in input trajectory
@@ -555,15 +555,15 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 println("Loading dataset...")
 # dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_vel_0_$N _30"
 dir_path = "/home/tq877/Tianyu/player_selection/MCP/data_closer"
-# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _30"
-# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _30"
+train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_train_$N _30"
+val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_val_$N _30"
 # test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30"
-train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
-val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
-# test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_cooperative/"
-test_dir = "C:/UT Austin/Research/MCP/data_closer_test_cooperative"
-train_dir = "C:/UT Austin/Research/MCP/data_train_$N _30/"
-val_dir = "C:/UT Austin/Research/MCP/data_val_$N _30/"
+# train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
+# val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
+test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_cooperative/"
+# test_dir = "C:/UT Austin/Research/MCP/data_closer_test_cooperative"
+# train_dir = "C:/UT Austin/Research/MCP/data_train_$N _30/"
+# val_dir = "C:/UT Austin/Research/MCP/data_val_$N _30/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
 train_dataset = load_all_json_data(train_dir)
 val_dataset = load_all_json_data(val_dir)
@@ -573,7 +573,7 @@ println("Validation Dataset loaded successfully. Total samples: ", length(val_da
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
-batch_size = 32
+batch_size = 8
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
@@ -583,8 +583,8 @@ test_dataloader = DataLoader(test_dataset, batch_size)
 # test_batches = length(test_dataset) / batch_size
 
 epochs = 100  # Number of training epochs
-global learning_rate = 0.01  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
-const loss_weight = [8, 2, 1]
+global learning_rate = 0.005  # Learning rate for the optimizer 0.01 for bs=16, 0.005 for bs=4
+const loss_weight = [11, 1.5, 1]
 
 ###############################################################################
 # Early Stopping Hyperparameters
@@ -611,11 +611,11 @@ const evaluation_modes = [
     # "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
-    # "Cost Evolution",
+    "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
     # "All",
-    "Neural Network Threshold",
+    # "Neural Network Threshold",
     # "Neural Network Rank",
     ]
 

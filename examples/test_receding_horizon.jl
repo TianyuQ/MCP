@@ -86,6 +86,52 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 mask[ranked_indices[i]] = 1
             end
         end
+    elseif mode == "Hessian"
+        if sim_step == 1
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # mode_parameter for initial nearest neighbor is all players for now
+        else
+            mask = zeros(N-1)
+            delta_t = 0.1 # hard coded for now
+            norm_costs = zeros(N-1)
+            for player_id in 2:N
+                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                delta_px = (state_differences[1] + delta_t * state_differences[3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
+                delta_py = (state_differences[2] + delta_t * state_differences[4]) ^ 2
+                delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
+                delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
+                D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
+                H11 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vx ^ 2 - D) # terms of the hessian
+                H12 = 8 * delta_t ^ 2 / D ^ 3 * delta_vx * delta_vy
+                H22 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vy ^ 2 - D)
+                norm_costs[player_id-1] = norm([H11 H12; H12 H22]) # Frobenius norm of the Hessian
+            end
+            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
+        end
+    elseif mode == "Cost Evolution"
+        if sim_step == 1
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # can't compute cost evolution at sim_step 1
+        else
+            mask = zeros(N-1)
+            mu = 1 # hard coded for now
+            cost_evolution_values = zeros(N-1)
+            for player_id in 2:N
+                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                D = sum(state_differences .^ 2) # denominator of mu/norm(xi_k - xj_k)^2
+        
+                # x_k-1 values (prior states) for player_id
+                state_differences_prev = (trajectory[1][end-7:end-4] - trajectory[player_id][end-7:end-4]) # state difference for previous sim_step
+                D_prev = sum(state_differences_prev .^ 2) # denominator of mu/norm(xi_k-1 - xj_k-1)^2
+                
+                cost_evolution_values[player_id-1] = mu / D - mu / D_prev # cost evolution value for player_id
+            end
+            ranked_indices = rank_array_from_large_to_small(cost_evolution_values) # rank the players based on the norm of the jacobian
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
+        end
         
     else
         error("Invalid mode: $mode")

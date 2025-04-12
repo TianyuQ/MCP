@@ -62,7 +62,7 @@ modes = [
     "All"
 ]
 
-result_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_noncooperative"
+result_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_cooperative"
 
 traj_similarity_list = []
 traj_smoothness_list = []
@@ -70,10 +70,13 @@ traj_length_list = []
 safety_list = []
 mask_sum_list = []
 
-mode = "Distance Threshold"
+# mode = "Distance Threshold"
 # mode = "Nearest Neighbor"
-# mode = "Neural Network Rank"
+mode = "Neural Network Rank"
 # mode = "Neural Network Threshold"
+# mode = "Jacobian"
+# mode = "Hessian"
+# mode = "Cost Evolution"
 # mode = "All"
 
 mode_parameter = 3
