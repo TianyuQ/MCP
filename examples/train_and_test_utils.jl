@@ -561,7 +561,7 @@ test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_test_$N _30"
 # train_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_train"
 # val_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_val"
 # test_dir = "/home/tq877/Tianyu/player_selection/MCP/data_closer_test_cooperative/"
-# test_dir = "C:/UT Austin/Research/MCP/data_closer_test_cooperative"
+test_dir = "C:/UT Austin/Research/MCP/data_test_$N _30"
 # train_dir = "C:/UT Austin/Research/MCP/data_train_$N _30/"
 # val_dir = "C:/UT Austin/Research/MCP/data_val_$N _30/"
 # test_dir = "C:/UT Austin/Research/MCP/data_test_$N/"
@@ -603,33 +603,32 @@ Random.seed!(seed)  # Set the seed to a fixed value
 # ihs = input_horizon, isd = input_state_dim, h = horizon
 global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim _w_$loss_weight"
 
-
-
-
 const evaluation_modes = [
     # "Nearest Neighbor",
     # "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
-    "Cost Evolution",
+    # "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
     # "All",
     # "Neural Network Threshold",
     # "Neural Network Rank",
+    "Neural Network Partial Threshold",
+    # "Neural Network Partial Rank",
     ]
 
 const mode_parameters = Dict(
     "Nearest Neighbor" => [2, 3],
     "Distance Threshold" => [1, 3],
-    # "Distance Threshold" => [1.5, 2, 2.5],
     "Jacobian" => [2, 3],
     "Hessian" => [2, 3],
     "Cost Evolution" => [2, 3],
     "Barrier Function" => [2, 3],
     "Control Barrier Function" => [2, 3],
-    # "Neural Network Threshold" => [0.05, 0.1, 0.15],
-    "Neural Network Threshold" => [0.5],
+    "Neural Network Threshold" => [0.1, 0.3, 0.5],
     "Neural Network Rank" => [2, 3],
+    "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+    "Neural Network Partial Rank" => [2, 3],
     "All" => [1],
 )

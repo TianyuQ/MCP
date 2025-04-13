@@ -27,9 +27,14 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
             mask = mask_computation(input_traj, trajectory, control, "Distance Threshold", sim_step, 2)
         else
             mask = best_model(input_traj)
-            # println("Pred Mask: ", round.(mask, digits=4))
             mask = map(x -> x > mode_parameter ? 1 : 0, mask)
-            # println("Pred Mask: ", mask)
+        end
+    elseif mode == "Neural Network Partial Threshold"
+        if sim_step <= 10
+            mask = mask_computation(input_traj, trajectory, control, "Distance Threshold", sim_step, 2)
+        else
+            mask = best_model(input_traj)
+            mask = map(x -> x > mode_parameter ? 1 : 0, mask)
         end
     elseif mode == "Distance Threshold"
         mask = zeros(N-1)
@@ -186,7 +191,7 @@ end
 println("\nLoading best model for testing...")
 # Use the same record_name as in training
 # best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/trained_model.bson")
-best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_16 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
+best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_2 _ep_100 _lr_0.003 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_2 _w_[11.0, 1.5, 1.0]/best_model.bson")
 # best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_32 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
@@ -221,6 +226,11 @@ for mode in evaluation_modes
                     end            
                 else
                     trajectory = Dict(player_id => vcat(trajectory[player_id][5:end], reshape(initial_states[4 * (player_id - 1) + 1:4 * player_id], :)) for player_id in 1:N)
+                    if mode == "Neural Network Partial Threshold" || mode == "Neural Network Partial Rank"
+                        input_traj = vec(vcat([reshape(trajectory[player_id][end-3:end-2], :) for player_id in 1:N]...))
+                    else
+                        input_traj = vec(vcat([reshape(trajectory[player_id], :) for player_id in 1:N]...))
+                    end
                     input_traj = vec(vcat([reshape(trajectory[player_id], :) for player_id in 1:N]...))
                 end
                 current_mask = mask_computation(input_traj, trajectory, latest_control, mode, sim_step, mode_parameter)
