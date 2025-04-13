@@ -69,14 +69,17 @@ traj_smoothness_list = []
 traj_length_list = []
 safety_list = []
 mask_sum_list = []
+time_list = []
 
 # mode = "Distance Threshold"
 # mode = "Nearest Neighbor"
-mode = "Neural Network Rank"
+# mode = "Neural Network Rank"
 # mode = "Neural Network Threshold"
 # mode = "Jacobian"
 # mode = "Hessian"
 # mode = "Cost Evolution"
+mode = "Barrier Function"
+# mode = "Control Barrier Function"
 # mode = "All"
 
 mode_parameter = 3
@@ -106,6 +109,7 @@ for scenario_id in range(160, 192):
     traj_length_list.append(trajectory_length_analysis(trajectories))
     safety_list.append(safety_analysis(trajectories))
     mask_sum_list.append(mask_sum_analysis(masks))
+    time_list.append(1)
 
 print(f"Mode: {mode}, Parameter: {mode_parameter}")
 print("Trajectory similarity analysis results:", quantile_analysis(traj_similarity_list), "Mean:", mean_analysis(traj_similarity_list))
@@ -113,3 +117,4 @@ print("Trajectory smoothness analysis results:", quantile_analysis(traj_smoothne
 print("Trajectory length analysis results:", quantile_analysis(traj_length_list), "Mean:", mean_analysis(traj_length_list))
 print("Safety analysis results:", quantile_analysis(safety_list), "Mean:", mean_analysis(safety_list))
 print("Mask sum analysis results:", quantile_analysis(mask_sum_list), "Mean:", mean_analysis(mask_sum_list))
+print("Time analysis results:", quantile_analysis(time_list), "Mean:", mean_analysis(time_list))

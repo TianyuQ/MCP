@@ -27,10 +27,11 @@ Manifest.toml
 
 data*
 *.pth
-*.json
+# *.json
 *.bson
+*.pdf
 
 *.png
-*.csv
+# *.csv
 
 examples/logs/*
