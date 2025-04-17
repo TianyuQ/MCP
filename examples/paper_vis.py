@@ -46,10 +46,11 @@ def get_trajectory(data, sim_steps="all"):
 #  CONFIGURATION
 ###############################################################################
 # List of method files (each file corresponds to one row)
+
 methods = [
-    r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Hessian]_[2].json",
-    r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Nearest Neighbor]_[2].json",
-    r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Neural Network Rank]_[2].json"
+  #  r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Hessian]_[2].json"
+ #   r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Nearest Neighbor]_[2].json",
+    r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Neural Network Rank]_[3].json"
 ]
 
 n_rows = len(methods)  # each method is one row
@@ -72,12 +73,13 @@ y_lim = (-3.5, 3.5)
 
 # Time labels for bottom row (formatted in math mode)
 time_labels = [
-    r"$t=0$",
-    r"$t=\delta t$",
-    r"$t=2\delta t$",
-    r"$t=3\delta t$",
-    r"$t=4\delta t$"
+    r"$t=1\,\mathrm{s}$",
+    r"$t=2\,\mathrm{s}$",
+    r"$t=3\,\mathrm{s}$",
+    r"$t=4\,\mathrm{s}$",
+    r"$t=5\,\mathrm{s}$",
 ]
+
 
 ###############################################################################
 #  LEGEND (using lighter colors)
@@ -125,7 +127,7 @@ for row, method_file in enumerate(methods):
     total_steps = len(trajectories["1"])  # assume all players have same number of steps
 
     # Choose 5 equally spaced step indices.
-    step_indices = np.linspace(0, total_steps - 1, n_cols, dtype=int)
+    step_indices = np.array([t * 10 for t in range(1, 6)], dtype=int)
 
     for col, step in enumerate(step_indices):
         ax = axes[row, col]
@@ -141,7 +143,9 @@ for row, method_file in enumerate(methods):
                 current_color = color_ego if p_id == 1 else color_other_off
             
             # Plot full trajectory history from the beginning up to 'step'
-            for idx in range(step):
+            #start_idx = max(0, step - 9)
+            start_idx = 0 # plot all previous steps
+            for idx in range(start_idx, step):
                 if idx + 1 >= len(traj):
                     break
                 if idx < len(masks) and masks[idx][p_id - 1] == 1:
@@ -187,7 +191,7 @@ for row, method_file in enumerate(methods):
             # Place the method label to the left (rotated vertically).
             ax.annotate(
                 method_label,
-                xy=(-0.45, 0.5),
+                xy=(-0.1, 0.5),
                 xycoords='axes fraction',
                 ha='center',
                 va='center',
@@ -202,5 +206,5 @@ for row, method_file in enumerate(methods):
 plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.05, wspace=0.05)
 # Save the plot as a PDF
 plt.tight_layout()
-plt.savefig("trajectories_grid_lighter_colors_latex.pdf", dpi=300, bbox_inches='tight')
+plt.savefig("trajectories_grid_lighter_colors_latex.pdf", dpi=1000, bbox_inches='tight')
 # plt.show()
