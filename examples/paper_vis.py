@@ -12,7 +12,7 @@ plt.rcParams['font.serif'] = ['Computer Modern Roman', 'DejaVu Serif']
 plt.rcParams['font.size'] = 11
 
 # Number of players (adjust as needed)
-N = 4
+N = 10
 
 def get_trajectory(data, sim_steps="all"):
     r"""
@@ -49,8 +49,8 @@ def get_trajectory(data, sim_steps="all"):
 
 methods = [
   #  r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Hessian]_[2].json"
- #   r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Nearest Neighbor]_[2].json",
-    r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Neural Network Rank]_[3].json"
+  #  r"data_closer_test_cooperative\receding_horizon_trajectories_[174]_[Nearest Neighbor]_[2].json",
+    r"data_test_10 _30\receding_horizon_trajectories_[41]_[Neural Network Rank]_[7].json"
 ]
 
 n_rows = len(methods)  # each method is one row
@@ -68,8 +68,31 @@ if n_cols == 1:
     axes = axes[:, np.newaxis]
 
 # Set constant axis limits for every plot.
-x_lim = (-3.5, 3.5)
-y_lim = (-3.5, 3.5)
+# Determine adaptive limits based on the trajectories
+all_x = []
+all_y = []
+for method_file in methods:
+    with open(method_file, 'r') as f:
+        data = json.load(f)
+    trajectories, _, _ = get_trajectory(data, sim_steps="all")
+    for traj in trajectories.values():
+        for point in traj:
+            all_x.append(point[0])
+            all_y.append(point[1])
+
+# Calculate limits with some padding
+x_min, x_max = min(all_x), max(all_x)
+y_min, y_max = min(all_y), max(all_y)
+padding = 0.5  # Add some padding to the limits
+x_range = x_max - x_min
+y_range = y_max - y_min
+max_range = max(x_range, y_range)  # Ensure aspect ratio remains the same
+
+x_center = (x_min + x_max) / 2
+y_center = (y_min + y_max) / 2
+
+x_lim = (x_center - max_range / 2 - padding, x_center + max_range / 2 + padding)
+y_lim = (y_center - max_range / 2 - padding, y_center + max_range / 2 + padding)
 
 # Time labels for bottom row (formatted in math mode)
 time_labels = [
