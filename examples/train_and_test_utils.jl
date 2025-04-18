@@ -270,7 +270,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         end
         # loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
         loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in (horizon-input_horizon)*d+1 : d : horizon*d) / (horizon - input_horizon)
-        loss_safety = 1 / minimum(norm(solution.primals[1][j:j+1] - strategy.target[(player_id-1) * horizon * d + j : (player_id-1) * horizon * d + j + 1]) for j in (horizon-input_horizon) * d + 1 : d : horizon * d for player_id in 2:N)
+        # loss_safety = 1 / minimum(norm(solution.primals[1][j:j+1] - strategy.target[(player_id-1) * horizon * d + j : (player_id-1) * horizon * d + j + 1]) for j in (horizon-input_horizon) * d + 1 : d : horizon * d for player_id in 2:N)
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
@@ -348,6 +348,16 @@ function setup_road_environment(; length)
     (; environment = PolygonEnvironment(vertices))
 end
 
+function setup_real_environment(; xmin, xmax, ymin, ymax)
+    vertices = [
+        [xmin, ymin],
+        [xmax, ymin],
+        [xmax, ymax],
+        [xmin, ymax],
+    ]
+    (; environment = PolygonEnvironment(vertices))
+end
+
 "Utility to set up a trajectory game."
 function setup_trajectory_game(; environment, N)
     cost = let
@@ -390,6 +400,46 @@ function setup_trajectory_game(; environment, N)
     TrajectoryGame(dynamics, cost, environment, coupling_constraints)
 end
 
+function setup_real_game(; environment, N)
+    cost = let
+        stage_costs = map(1:N) do ii
+            (x, u, t, θi) -> let
+            goal = θi[end-(N+1):end-N]
+            mask = θi[end-(N-1):end]
+                norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+            end
+        end
+
+        function reducer(stage_costs)
+            reduce(+, stage_costs) / length(stage_costs)
+        end
+
+        TimeSeparableTrajectoryGameCost(
+            stage_costs,
+            reducer,
+            GeneralSumCostStructure(),
+            1.0,
+        )
+    end
+
+    function coupling_constraints(xs, us, θ)
+        mapreduce(vcat, xs) do x
+            player_states = blocks(x)  # Extract exactly N player states
+            [ 1 ]
+            # [
+            #     norm_sqr(player_states[1][1:2] - player_states[2][1:2]) - 1 * θ[7] * θ[8],
+            # ]
+        end
+    end
+
+    agent_dynamics = planar_double_integrator(;
+        state_bounds = (; lb = [18.5, 2, -1, -2.3], ub = [26, 23.5, 1.2, 2.2]),
+        control_bounds = (; lb = [-1, -1], ub = [1, 1]),
+    )
+    dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
+
+    TrajectoryGame(dynamics, cost, environment, coupling_constraints)
+end
 
 ###############################################################################
 # Initialize GPU (if available)
@@ -545,9 +595,9 @@ const masks = [bitstring(i)[end-N+1:end] |> x -> parse.(Int, collect(x)) for i i
 ###############################################################################
 # Load Game
 ###############################################################################
-(; environment) = setup_road_environment(; length = 10)
-game = setup_trajectory_game(; environment, N = N)
-parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = N + 2)
+# (; environment) = setup_road_environment(; length = 10)
+# game = setup_trajectory_game(; environment, N = N)
+# parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = N + 2)
 
 ###############################################################################
 # Load Dataset
@@ -604,31 +654,62 @@ Random.seed!(seed)  # Set the seed to a fixed value
 global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim _w_$loss_weight"
 
 const evaluation_modes = [
-    # "Nearest Neighbor",
-    # "Distance Threshold",
+    "All",
+    "Nearest Neighbor",
+    "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
-    # "Cost Evolution",
-    # "Barrier Function",
+    "Cost Evolution",
+    "Barrier Function",
     # "Control Barrier Function",
-    # "All",
-    # "Neural Network Threshold",
-    # "Neural Network Rank",
-    "Neural Network Partial Threshold",
+    "Neural Network Threshold",
+    "Neural Network Rank",
+    # "Neural Network Partial Threshold",
     # "Neural Network Partial Rank",
     ]
 
-const mode_parameters = Dict(
-    "Nearest Neighbor" => [2, 3],
-    "Distance Threshold" => [1, 3],
-    "Jacobian" => [2, 3],
-    "Hessian" => [2, 3],
-    "Cost Evolution" => [2, 3],
-    "Barrier Function" => [2, 3],
-    "Control Barrier Function" => [2, 3],
-    "Neural Network Threshold" => [0.1, 0.3, 0.5],
-    "Neural Network Rank" => [2, 3],
-    "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
-    "Neural Network Partial Rank" => [2, 3],
-    "All" => [1],
-)
+const real_evaluation_modes = [
+        "All",
+        "Nearest Neighbor",
+        "Distance Threshold",
+        "Cost Evolution",
+        # "Barrier Function",
+        # "Neural Network Threshold",
+        # "Neural Network Rank",
+        # "Neural Network Partial Threshold",
+        # "Neural Network Partial Rank",
+    ]
+
+if N == 4
+    const mode_parameters = Dict(
+        "Nearest Neighbor" => [2, 3],
+        "Distance Threshold" => [1.5, 2, 2.5],
+        "Jacobian" => [2, 3],
+        "Hessian" => [2, 3],
+        "Cost Evolution" => [2, 3],
+        "Barrier Function" => [2, 3],
+        "Control Barrier Function" => [2, 3],
+        "Neural Network Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Rank" => [2, 3],
+        "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Partial Rank" => [2, 3],
+        "All" => [1],
+    )
+elseif N == 10
+    const mode_parameters = Dict(
+        "Nearest Neighbor" => [3, 5, 7],
+        "Distance Threshold" => [1.5, 2, 2.5],
+        "Jacobian" => [3, 5, 7],
+        "Hessian" => [3, 5, 7],
+        "Cost Evolution" => [3, 5, 7],
+        "Barrier Function" => [3, 5, 7],
+        "Control Barrier Function" => [3, 5, 7],
+        "Neural Network Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Rank" => [3, 5, 7],
+        "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Partial Rank" => [3, 5, 7],
+        "All" => [1],
+    )
+else
+    error("Unsupported number of players: $N")
+end

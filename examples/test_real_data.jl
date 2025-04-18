@@ -68,53 +68,6 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
                 mask[ranked_indices[i]] = 1
             end
         end
-    elseif mode == "Jacobian"
-        if sim_step == 1
-            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter)
-        else
-            mask = zeros(N-1)
-            delta_t = 0.1 # hard coded for now
-            norm_costs = zeros(N-1)
-            for player_id in 2:N
-                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
-                delta_px = (state_differences[1] + delta_t * state_differences[3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
-                delta_py = (state_differences[2] + delta_t * state_differences[4]) ^ 2
-                delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
-                delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
-                D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
-                J1 = 1/(D ^ 2) * 2 * delta_vx * delta_t # partial derivative of l_col with respect to aj_{k,x}
-                J2 = 1/(D ^ 2) * 2 * delta_vy * delta_t # partial derivative of l_col with respect to aj_{k,y}
-                norm_costs[player_id-1] = norm([J1, J2]) # [J1, J2] is the jacobian of the cost function with respect to the control of player_id
-            end
-            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
-            for i in 1:mode_parameter-1
-                mask[ranked_indices[i]] = 1
-            end
-        end
-    elseif mode == "Hessian"
-        if sim_step == 1
-            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # mode_parameter for initial nearest neighbor is all players for now
-        else
-            mask = zeros(N-1)
-            delta_t = 0.1 # hard coded for now
-            norm_costs = zeros(N-1)
-            for player_id in 2:N
-                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
-                delta_px = (state_differences[1] + delta_t * state_differences[3]) ^ 2 # ex: (pi_{k,x} - pj_{k,x} + delta_t * (vi_{k,x} - vj_{k,x})) ^ 2
-                delta_py = (state_differences[2] + delta_t * state_differences[4]) ^ 2
-                delta_vx = (state_differences[3] + delta_t * control[player_id][1]) ^ 2
-                delta_vy = (state_differences[4] + delta_t * control[player_id][2]) ^ 2
-                D = delta_px + delta_py + delta_vx + delta_vy # denominator of l_col between player i and j = player_id
-                H11 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vx ^ 2 - D) # terms of the hessian
-                H12 = 8 * delta_t ^ 2 / D ^ 3 * delta_vx * delta_vy
-                H22 = 2 * delta_t ^ 2 / D ^ 3 * (4*delta_vy ^ 2 - D)
-                norm_costs[player_id-1] = norm([H11 H12; H12 H22]) # Frobenius norm of the Hessian
-            end
-            ranked_indices = rank_array_from_large_to_small(norm_costs) # rank the players based on the norm of the jacobian
-            for i in 1:mode_parameter-1
-                mask[ranked_indices[i]] = 1
-            end
-        end
     elseif mode == "Cost Evolution"
         if sim_step == 1
             mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # can't compute cost evolution at sim_step 1
@@ -154,29 +107,6 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
         for i in 1:mode_parameter-1
             mask[ranked_indices[i]] = 1
         end
-    elseif mode == "Control Barrier Function"
-        if sim_step == 1
-            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter) # can't compute cost evolution at sim_step 1
-        else
-            mask = zeros(N-1)
-            cbf_values = zeros(N-1)
-            R = 0.5 # may need to change
-            kappa = 5.0 # may need to change
-            for playerid in 2:N
-                position_difference = trajectory[1][end-3:end-2] - trajectory[playerid][end-3:end-2] # xi - xj
-                velocity_difference = trajectory[1][end-1:end] - trajectory[playerid][end-1:end] # vi - vj
-                acceleration_difference = control[1] - control[playerid] # ai - aj
-                h = sum(position_difference.^2) - R^2 # ||xi - xj||^2 - R^2
-                h_dot = 2 * position_difference' * velocity_difference # 2 * (xi - xj)' * (vi - vj)
-                h_ddot = 2 * (velocity_difference' * velocity_difference + position_difference' * acceleration_difference) # 2 * (vi - vj)' * (vi - vj) + 2 * (xi - xj)' * (ai - aj)
-                f_CBF = h_ddot + 2 * kappa * h_dot + kappa^2 * h # CBF value for ego w.r.t player_id
-                cbf_values[playerid-1] = f_CBF # f_CBF for player_id
-            end
-            ranked_indices = rank_array_from_small_to_large(cbf_values) # rank the players based on CBF values (small = danger)
-            for i in 1:mode_parameter-1
-                mask[ranked_indices[i]] = 1
-            end
-        end
     else
         error("Invalid mode: $mode")
     end
@@ -184,24 +114,40 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
     return mask
 end
 
+# (; environment) = setup_road_environment(; length = 75)
+(; environment) = setup_real_environment(; xmin = 18.5, xmax = 26, ymin = 2, ymax = 23.5)
+game = setup_real_game(; environment, N = N)
+parametric_game = build_parametric_game(; game, horizon=horizon, params_per_player = N + 2)
+
+
 ###############################################################################
 # Evaluation Code
 ###############################################################################
 
 println("\nLoading best model for testing...")
-# Use the same record_name as in training
-# best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/trained_model.bson")
-# best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_2 _ep_100 _lr_0.003 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_2 _w_[11.0, 1.5, 1.0]/best_model.bson")
 best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_8 _ep_100 _lr_0.005 _sd_3 _pat_100 _N_10 _h_30 _ih10 _isd_4 _w_[11.0, 1.5, 1.0]/best_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
 
-for mode in evaluation_modes
-    for mode_parameter in mode_parameters[mode]
-        println("\nTesting mode: $mode with parameter: $mode_parameter")
-        for scenario_id in 160:191
-            println("Scenario $scenario_id")
-            file_path = joinpath(test_dir, "scenario_$scenario_id.csv")
+# Initialize the dictionary with empty integer arrays for each key
+# time_dict = []
+
+time_dict = [115, 81, 60, 107, 126, 102] # Example values for each scenario
+
+# Append values to the arrays (using push!)
+# push!(time_dict, 116 - 1)
+# push!(time_dict, 82 - 1)
+# push!(time_dict, 61 - 1)
+# push!(time_dict, 108 - 1)
+# push!(time_dict, 127 - 1)
+# push!(time_dict, 103 - 1)
+
+results_dir = "C:/UT Austin/Research/MCP/data_ped/"
+
+for scenario_id in 1:6
+    for mode in real_evaluation_modes
+        for mode_parameter in mode_parameters[mode]
+            file_path = joinpath(results_dir, "scenario$scenario_id.csv")
             data = CSV.read(file_path, DataFrame)
             goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
             initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
@@ -218,8 +164,9 @@ for mode in evaluation_modes
             end
             latest_control = []
             receding_horizon_result["Player 1 Mask"] = []
-            for sim_step in 1:50
-                println("Sim Step: $sim_step")
+            for sim_step in 1:time_dict[scenario_id]
+                # println("Sim Step: $sim_step")
+                println("Scenario: $scenario_id, Mode: $mode, Parameter: $mode_parameter, Sim Step: $sim_step")
                 input_traj = []
                 if sim_step <= 10
                     if sim_step > 1
@@ -261,8 +208,7 @@ for mode in evaluation_modes
                 end              
             end
 
-            # results_path = "/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/similarity_safety_scores_$mode.json"
-            results_path = "$test_dir/receding_horizon_trajectories_[$scenario_id]_[$mode]_[$mode_parameter].json"
+            results_path = "$results_dir/trajectories_[$scenario_id]_[$mode]_[$mode_parameter].json"
             open(results_path, "w") do io
                 JSON.print(io, receding_horizon_result)
             end
