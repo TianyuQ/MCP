@@ -406,7 +406,7 @@ function setup_real_game(; environment, N)
             (x, u, t, θi) -> let
             goal = θi[end-(N+1):end-N]
             mask = θi[end-(N-1):end]
-                norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 2 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+                0.5 * norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 1 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
             end
         end
 
@@ -434,7 +434,7 @@ function setup_real_game(; environment, N)
 
     agent_dynamics = planar_double_integrator(;
         state_bounds = (; lb = [18.5, 2, -1, -2.3], ub = [26, 23.5, 1.2, 2.2]),
-        control_bounds = (; lb = [-1, -1], ub = [1, 1]),
+        control_bounds = (; lb = [-0.5, -0.5], ub = [0.5, 0.5]),
     )
     dynamics = ProductDynamics([agent_dynamics for _ in 1:N])
 
@@ -670,12 +670,12 @@ const evaluation_modes = [
 
 const real_evaluation_modes = [
         "All",
-        "Nearest Neighbor",
-        "Distance Threshold",
-        "Cost Evolution",
+        "Neural Network Threshold",
+        "Neural Network Rank",
+        # "Nearest Neighbor",
+        # "Distance Threshold",
+        # "Cost Evolution",
         # "Barrier Function",
-        # "Neural Network Threshold",
-        # "Neural Network Rank",
         # "Neural Network Partial Threshold",
         # "Neural Network Partial Rank",
     ]
@@ -697,15 +697,23 @@ if N == 4
     )
 elseif N == 10
     const mode_parameters = Dict(
-        "Nearest Neighbor" => [3, 5, 7],
-        "Distance Threshold" => [1.5, 2, 2.5],
-        "Jacobian" => [3, 5, 7],
-        "Hessian" => [3, 5, 7],
-        "Cost Evolution" => [3, 5, 7],
-        "Barrier Function" => [3, 5, 7],
+        # "Nearest Neighbor" => [3, 5, 7],
+        "Nearest Neighbor" => [3],
+        # "Distance Threshold" => [1.5, 2, 2.5],
+        "Distance Threshold" => [2.5],
+        # "Jacobian" => [3, 5, 7],
+        "Jacobian" => [3],
+        # "Hessian" => [3, 5, 7],
+        "Hessian" => [3],
+        # "Cost Evolution" => [3, 5, 7],
+        "Cost Evolution" => [3],
+        # "Barrier Function" => [3, 5, 7],
+        "Barrier Function" => [3],
         "Control Barrier Function" => [3, 5, 7],
-        "Neural Network Threshold" => [0.1, 0.3, 0.5],
-        "Neural Network Rank" => [3, 5, 7],
+        # "Neural Network Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Threshold" => [0.5],
+        # "Neural Network Rank" => [3, 5, 7],
+        "Neural Network Rank" => [3],
         "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
         "Neural Network Partial Rank" => [3, 5, 7],
         "All" => [1],
