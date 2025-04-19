@@ -406,7 +406,7 @@ function setup_real_game(; environment, N)
             (x, u, t, θi) -> let
             goal = θi[end-(N+1):end-N]
             mask = θi[end-(N-1):end]
-                0.5 * norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 1 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
+                0.3 * norm_sqr(x[Block(ii)][1:2] - goal) + norm_sqr(x[Block(ii)][3:4]) + 0.1 * norm_sqr(u[Block(ii)]) + 1 * sum((mask[ii] * mask[jj]) / norm_sqr(x[Block(ii)][1:2] - x[Block(jj)][1:2]) for jj in 1:N if jj != ii)
             end
         end
 
@@ -698,22 +698,22 @@ if N == 4
 elseif N == 10
     const mode_parameters = Dict(
         # "Nearest Neighbor" => [3, 5, 7],
-        "Nearest Neighbor" => [3],
+        "Nearest Neighbor" => [5],
         # "Distance Threshold" => [1.5, 2, 2.5],
         "Distance Threshold" => [2.5],
         # "Jacobian" => [3, 5, 7],
-        "Jacobian" => [3],
+        "Jacobian" => [5],
         # "Hessian" => [3, 5, 7],
-        "Hessian" => [3],
+        "Hessian" => [5],
         # "Cost Evolution" => [3, 5, 7],
-        "Cost Evolution" => [3],
+        "Cost Evolution" => [5],
         # "Barrier Function" => [3, 5, 7],
-        "Barrier Function" => [3],
+        "Barrier Function" => [5],
         "Control Barrier Function" => [3, 5, 7],
         # "Neural Network Threshold" => [0.1, 0.3, 0.5],
         "Neural Network Threshold" => [0.5],
         # "Neural Network Rank" => [3, 5, 7],
-        "Neural Network Rank" => [3],
+        "Neural Network Rank" => [5],
         "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
         "Neural Network Partial Rank" => [3, 5, 7],
         "All" => [1],
