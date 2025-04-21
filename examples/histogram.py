@@ -89,15 +89,15 @@ def clean_method_name_for_legend(method, option):
     return method  # Return the original method name if no change is needed
 
 # ADJUSTABLE PARAMETERS. 
-N=10
-num_scenarios = 8
-scenario_start_idx = 40
+N=4
+num_scenarios = 32
+scenario_start_idx = 160
 
 total = num_scenarios * 50
 
 scenario_idx = np.arange(scenario_start_idx, scenario_start_idx + num_scenarios, 1)
 
-methods = ['Neural Network Threshold th=0.5', 'Neural Network Threshold th=0.3',  'Distance Threshold th=2.0']
+methods = ['Neural Network Threshold th=0.5', 'Neural Network Partial Threshold th=0.5',  'Distance Threshold th=2.0'] # the syntax here is important!
 method_names = [methods[i][:-7] for i in range(len(methods))]
 
 method_sums = {}
@@ -105,8 +105,13 @@ for m, method in enumerate(method_names):
     sum_list = []
 
     for i in scenario_idx:
-        with open(f"data_test_{N} _30\\receding_horizon_trajectories_[{i}]_[{method}]_[{methods[m][-3:]}].json", "r") as f:
-            data = json.load(f)
+        if 'Distance Threshold' in methods[m]:
+            threshold_value = int(float(methods[m].split('=')[-1]))
+            with open(f"data_test_{N} _30\\receding_horizon_trajectories_[{i}]_[{method}]_[{threshold_value}].json", "r") as f:
+                data = json.load(f)
+        else:  
+            with open(f"data_test_{N} _30\\receding_horizon_trajectories_[{i}]_[{method}]_[{methods[m][-3:]}].json", "r") as f:
+                data = json.load(f)
 
         masks = np.array(get_trajectory(data, sim_steps="all")[2])
         summed_masks = masks.sum(axis=1)
@@ -119,7 +124,6 @@ for m, method in enumerate(method_names):
 
     method_sums[methods[m]] = scenario_sums
 
-
 # Plotting
 
 mask_values = np.arange(1, N+1)
@@ -131,9 +135,9 @@ percent = {
 }
 
 color_map = {
-    'Distance Threshold th=2.0':            'tab:orange',  # matches Distance [2]
-    'Neural Network Threshold th=0.3':      'tab:brown',   # matches PSN‑Full [0.5]
-    'Neural Network Threshold th=0.5': 'tab:olive' # matches PSN‑Partial [0.5]
+    methods[2]:            'tab:orange',  # matches Distance [2]
+    methods[1]:      'tab:brown',   # matches PSN‑Full [0.5]
+    methods[0]: 'tab:olive' # matches PSN‑Partial [0.5]
 }
 
 # ——————————————
@@ -141,7 +145,7 @@ color_map = {
 x = np.arange(len(mask_values))
 width = 0.25
 
-fig, ax = plt.subplots(figsize=(10,10))
+fig, ax = plt.subplots(figsize=(10,5))
 
 for i, m in enumerate(methods):
     bars = ax.bar(
