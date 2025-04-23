@@ -51,12 +51,10 @@ using ForwardDiff
 using Distributions
 
 include("train_and_test_utils.jl")
-# include("baseline.jl")
 include("parametric_masked_game_solver.jl")
 # include("game_with_masks.jl")
 # include("train_with_validation.jl")
-# include("test_new.jl")
-include("test_receding_horizon.jl")
-# include("time_test.jl")
+# include("test_receding_horizon.jl")
+include("test_real_data.jl")
 
 end # module PlayerSelectionTraining
