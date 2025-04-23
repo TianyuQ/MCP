@@ -125,7 +125,7 @@ parametric_game = build_parametric_game(; game, horizon=horizon, params_per_play
 ###############################################################################
 
 println("\nLoading best model for testing...")
-best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_8 _ep_100 _lr_0.005 _sd_3 _pat_100 _N_10 _h_30 _ih10 _isd_4 _w_[11.0, 1.5, 1.0]/best_model.bson")
+best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_2 _ep_100 _lr_0.005 _sd_3 _pat_100 _N_10 _h_30 _ih10 _isd_2 _w_[11.0, 1.5, 1.0]/best_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
 
@@ -133,14 +133,6 @@ println("Best model loaded successfully!")
 # time_dict = []
 
 time_dict = [115, 81, 60, 107, 126, 102] # Example values for each scenario
-
-# Append values to the arrays (using push!)
-# push!(time_dict, 116 - 1)
-# push!(time_dict, 82 - 1)
-# push!(time_dict, 61 - 1)
-# push!(time_dict, 108 - 1)
-# push!(time_dict, 127 - 1)
-# push!(time_dict, 103 - 1)
 
 results_dir = "C:/UT Austin/Research/MCP/data_ped/"
 

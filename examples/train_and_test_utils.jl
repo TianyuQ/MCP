@@ -669,14 +669,14 @@ const evaluation_modes = [
     ]
 
 const real_evaluation_modes = [
-        "All",
-        "Neural Network Threshold",
-        "Neural Network Rank",
+        # "All",
+        # "Neural Network Threshold",
+        # "Neural Network Rank",
         # "Nearest Neighbor",
         # "Distance Threshold",
         # "Cost Evolution",
         # "Barrier Function",
-        # "Neural Network Partial Threshold",
+        "Neural Network Partial Threshold",
         # "Neural Network Partial Rank",
     ]
 
@@ -714,8 +714,10 @@ elseif N == 10
         "Neural Network Threshold" => [0.5],
         # "Neural Network Rank" => [3, 5, 7],
         "Neural Network Rank" => [5],
-        "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
-        "Neural Network Partial Rank" => [3, 5, 7],
+        # "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Partial Threshold" => [0.5],
+        # "Neural Network Partial Rank" => [3, 5, 7],
+        "Neural Network Partial Rank" => [5],
         "All" => [1],
     )
 else
