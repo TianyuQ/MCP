@@ -27,9 +27,14 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
             mask = mask_computation(input_traj, trajectory, control, "Distance Threshold", sim_step, 2)
         else
             mask = best_model(input_traj)
-            # println("Pred Mask: ", round.(mask, digits=4))
             mask = map(x -> x > mode_parameter ? 1 : 0, mask)
-            # println("Pred Mask: ", mask)
+        end
+    elseif mode == "Neural Network Partial Threshold"
+        if sim_step <= 10
+            mask = mask_computation(input_traj, trajectory, control, "Distance Threshold", sim_step, 2)
+        else
+            mask = best_model(input_traj)
+            mask = map(x -> x > mode_parameter ? 1 : 0, mask)
         end
     elseif mode == "Distance Threshold"
         mask = zeros(N-1)
@@ -53,6 +58,17 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
             mask[ranked_indices[i]] = 1
         end
     elseif mode == "Neural Network Rank"
+        if sim_step <= 10
+            mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter)
+        else
+            model_mask = best_model(input_traj)
+            ranked_indices = rank_array_from_large_to_small(model_mask)
+            mask = zeros(N-1)
+            for i in 1:mode_parameter-1
+                mask[ranked_indices[i]] = 1
+            end
+        end
+    elseif mode == "Neural Network Partial Rank"
         if sim_step <= 10
             mask = mask_computation(input_traj, trajectory, control, "Nearest Neighbor", sim_step, mode_parameter)
         else
@@ -118,11 +134,11 @@ function mask_computation(input_traj, trajectory, control, mode, sim_step, mode_
             mu = 1 # hard coded for now
             cost_evolution_values = zeros(N-1)
             for player_id in 2:N
-                state_differences = (trajectory[1][end-3:end] - trajectory[player_id][end-3:end]) # ex: pi_{k,x} - pj_{k,x}
+                state_differences = (trajectory[1][end-3:end-2] - trajectory[player_id][end-3:end-2]) # ex: pi_{k,x} - pj_{k,x}
                 D = sum(state_differences .^ 2) # denominator of mu/norm(xi_k - xj_k)^2
         
                 # x_k-1 values (prior states) for player_id
-                state_differences_prev = (trajectory[1][end-7:end-4] - trajectory[player_id][end-7:end-4]) # state difference for previous sim_step
+                state_differences_prev = (trajectory[1][end-7:end-6] - trajectory[player_id][end-7:end-6]) # state difference for previous sim_step
                 D_prev = sum(state_differences_prev .^ 2) # denominator of mu/norm(xi_k-1 - xj_k-1)^2
                 
                 cost_evolution_values[player_id-1] = mu / D - mu / D_prev # cost evolution value for player_id
@@ -186,7 +202,7 @@ end
 println("\nLoading best model for testing...")
 # Use the same record_name as in training
 # best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/trained_model.bson")
-best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/bs_16 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
+best_model_data = BSON.load("/home/tq877/Tianyu/player_selection/MCP/examples/logs/$record_name/best_model.bson")
 # best_model_data = BSON.load("C:/UT Austin/Research/MCP/examples/logs/bs_32 _ep_100 _lr_0.01 _sd_3 _pat_100 _N_4 _h_30 _ih10 _isd_4/trained_model.bson")
 best_model = best_model_data[:model]
 println("Best model loaded successfully!")
@@ -194,16 +210,18 @@ println("Best model loaded successfully!")
 for mode in evaluation_modes
     for mode_parameter in mode_parameters[mode]
         println("\nTesting mode: $mode with parameter: $mode_parameter")
-        for scenario_id in 160:191
+        for scenario_id in 40:47
             println("Scenario $scenario_id")
             file_path = joinpath(test_dir, "scenario_$scenario_id.csv")
             data = CSV.read(file_path, DataFrame)
             goals = mortar([[row.goal_x, row.goal_y] for row in eachrow(data[1:N,:])])
             initial_states = mortar([[row.x, row.y, row.vx, row.vy] for row in eachrow(data[1:N, :])])
             trajectory = Dict{Int64, Vector{Float64}}()
+            partial_trajectory = Dict{Int64, Vector{Float64}}()
             receding_horizon_result = Dict()
             for player_id in 1:N
                 trajectory[player_id] = initial_states[4 * (player_id - 1) + 1:4 * player_id]
+                partial_trajectory[player_id] = initial_states[4 * (player_id - 1) + 1:4 * (player_id - 1) + 2]
                 receding_horizon_result["Player $player_id Trajectory"] = [initial_states[4 * (player_id - 1) + 1:4 * player_id]]
                 receding_horizon_result["Player $player_id Initial State"] = initial_states[4 * (player_id - 1) + 1:4 * player_id]
                 receding_horizon_result["Player $player_id Goal"] = goals[2 * (player_id - 1) + 1:2 * player_id]
@@ -212,16 +230,23 @@ for mode in evaluation_modes
             latest_control = []
             receding_horizon_result["Player 1 Mask"] = []
             for sim_step in 1:50
+                println("Sim Step: $sim_step")
                 input_traj = []
                 if sim_step <= 10
                     if sim_step > 1
                         for player_id in 1:N
                             trajectory[player_id] = vcat(trajectory[player_id], initial_states[4 * (player_id - 1) + 1:4 * player_id])
+                            partial_trajectory[player_id] = vcat(partial_trajectory[player_id], initial_states[4 * (player_id - 1) + 1:4 * (player_id - 1) + 2])
                         end
                     end            
                 else
                     trajectory = Dict(player_id => vcat(trajectory[player_id][5:end], reshape(initial_states[4 * (player_id - 1) + 1:4 * player_id], :)) for player_id in 1:N)
-                    input_traj = vec(vcat([reshape(trajectory[player_id], :) for player_id in 1:N]...))
+                    partial_trajectory = Dict(player_id => vcat(partial_trajectory[player_id][3:end], reshape(initial_states[4 * (player_id - 1) + 1:4 * (player_id - 1) + 2], :)) for player_id in 1:N)
+                    if mode == "Neural Network Partial Threshold" || mode == "Neural Network Partial Rank"
+                        input_traj = vec(vcat([reshape(partial_trajectory[player_id], :) for player_id in 1:N]...))
+                    else
+                        input_traj = vec(vcat([reshape(trajectory[player_id], :) for player_id in 1:N]...))
+                    end
                 end
                 current_mask = mask_computation(input_traj, trajectory, latest_control, mode, sim_step, mode_parameter)
                 pred_mask = vcat([1], current_mask)

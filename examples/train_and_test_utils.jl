@@ -270,7 +270,7 @@ function TrajectoryGamesBase.solve_trajectory_game!(
         end
         # loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in 1:2:120) / 60
         loss_similarity = sum(norm(solution.primals[1][j:j+1] - strategy.target[j:j+1]) for j in (horizon-input_horizon)*d+1 : d : horizon*d) / (horizon - input_horizon)
-        loss_safety = 1 / minimum(norm(solution.primals[1][j:j+1] - strategy.target[(player_id-1) * horizon * d + j : (player_id-1) * horizon * d + j + 1]) for j in (horizon-input_horizon) * d + 1 : d : horizon * d for player_id in 2:N)
+        # loss_safety = 1 / minimum(norm(solution.primals[1][j:j+1] - strategy.target[(player_id-1) * horizon * d + j : (player_id-1) * horizon * d + j + 1]) for j in (horizon-input_horizon) * d + 1 : d : horizon * d for player_id in 2:N)
         loss_parameter_binary = sum(0.5 .- abs.(0.5 .- parameter_value[7+1:7+(N-1)])) / (N-1)
         loss_parameter_sum = sum(parameter_value[7+1:7+(N-1)]) / (N-1)
         
@@ -535,7 +535,7 @@ const N = 10      # Number of players
 const horizon = 30     # Time steps in past trajectory
 const d = 4      # State dimension per player
 const input_horizon = 10  # Number of time steps in input trajectory
-const input_state_dim = 4  # State dimension per player in input trajectory
+const input_state_dim = 2  # State dimension per player in input trajectory
 const input_size = N * input_horizon * input_state_dim  # Input size for neural network
 const num_sim_steps = 1  # Number of simulation steps
 
@@ -573,7 +573,7 @@ println("Validation Dataset loaded successfully. Total samples: ", length(val_da
 println("Testing Dataset loaded successfully. Total samples: ", length(test_dataset))
 
 # # Set batch size and initialize DataLoader
-batch_size = 8
+batch_size = 2
 train_dataloader = DataLoader(train_dataset, batch_size)
 val_dataloader = DataLoader(val_dataset, batch_size)
 test_dataloader = DataLoader(test_dataset, batch_size)
@@ -603,33 +603,51 @@ Random.seed!(seed)  # Set the seed to a fixed value
 # ihs = input_horizon, isd = input_state_dim, h = horizon
 global record_name = "bs_$batch_size _ep_$epochs _lr_$learning_rate _sd_$seed _pat_$patience _N_$N _h_$horizon _ih$input_horizon _isd_$input_state_dim _w_$loss_weight"
 
-
-
-
 const evaluation_modes = [
     # "Nearest Neighbor",
     # "Distance Threshold",
     # "Jacobian", 
     # "Hessian",
-    "Cost Evolution",
+    # "Cost Evolution",
     # "Barrier Function",
     # "Control Barrier Function",
     # "All",
     # "Neural Network Threshold",
     # "Neural Network Rank",
+    "Neural Network Partial Threshold",
+    "Neural Network Partial Rank",
     ]
 
-const mode_parameters = Dict(
-    "Nearest Neighbor" => [2, 3],
-    "Distance Threshold" => [1, 3],
-    # "Distance Threshold" => [1.5, 2, 2.5],
-    "Jacobian" => [2, 3],
-    "Hessian" => [2, 3],
-    "Cost Evolution" => [2, 3],
-    "Barrier Function" => [2, 3],
-    "Control Barrier Function" => [2, 3],
-    # "Neural Network Threshold" => [0.05, 0.1, 0.15],
-    "Neural Network Threshold" => [0.5],
-    "Neural Network Rank" => [2, 3],
-    "All" => [1],
-)
+if N == 4
+    const mode_parameters = Dict(
+        "Nearest Neighbor" => [2, 3],
+        "Distance Threshold" => [1.5, 2, 2.5],
+        "Jacobian" => [2, 3],
+        "Hessian" => [2, 3],
+        "Cost Evolution" => [2, 3],
+        "Barrier Function" => [2, 3],
+        "Control Barrier Function" => [2, 3],
+        "Neural Network Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Rank" => [2, 3],
+        "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Partial Rank" => [2, 3],
+        "All" => [1],
+    )
+elseif N == 10
+    const mode_parameters = Dict(
+        "Nearest Neighbor" => [3, 5, 7],
+        "Distance Threshold" => [1.5, 2, 2.5],
+        "Jacobian" => [3, 5, 7],
+        "Hessian" => [3, 5, 7],
+        "Cost Evolution" => [3, 5, 7],
+        "Barrier Function" => [3, 5, 7],
+        "Control Barrier Function" => [3, 5, 7],
+        "Neural Network Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Rank" => [3, 5, 7],
+        "Neural Network Partial Threshold" => [0.1, 0.3, 0.5],
+        "Neural Network Partial Rank" => [3, 5, 7],
+        "All" => [1],
+    )
+else
+    error("Unsupported number of players: $N")
+end

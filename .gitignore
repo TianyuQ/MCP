@@ -27,7 +27,7 @@ Manifest.toml
 
 data*
 *.pth
-# *.json
+*.json
 *.bson
 *.pdf
 
