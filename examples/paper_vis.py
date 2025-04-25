@@ -106,9 +106,10 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
     # Create figure with shared axes so that all subplots have the same x and y scales.
     fig, axes = plt.subplots(
         n_rows, n_cols,
-        figsize=(15, 4.5 * n_rows),
+        figsize=(4.5 * n_cols, 4.5 * n_rows),
         sharex=True,
-        sharey=True
+        sharey=True,
+        gridspec_kw = {'wspace':0, 'hspace':0}
         )
     if n_rows == 1:
         axes = np.array([axes])
@@ -266,8 +267,7 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
             else:
                 ax.set_yticklabels([])
                 ax.set_ylabel("")
+                ax.tick_params(axis='y', which='both', left=False, right=False)
 
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0, wspace=0)
-    #plt.tight_layout()
     plt.savefig(f"nn_traj_vis\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
     plt.close(fig)  # Close the figure to free memory
