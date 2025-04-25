@@ -109,13 +109,23 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
         figsize=(4.5 * n_cols, 4.5 * n_rows),
         sharex=True,
         sharey=True,
-        gridspec_kw = {'wspace':0, 'hspace':0}
+        gridspec_kw = {'wspace':0.01, 'hspace':0}
         )
     if n_rows == 1:
         axes = np.array([axes])
     if n_cols == 1:
         axes = axes[:, np.newaxis]
 
+    for ax in axes.flat:
+        # thinner frame
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.25)     
+            spine.set_alpha(0.2)    
+        ax.tick_params(
+            width=0.8,                 
+            length=4,                    
+            which='both'                    
+            )
     # Set constant axis limits for every plot.
     # Determine adaptive limits based on the trajectories
     all_x = []
@@ -196,7 +206,11 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
 
         trajectories, goals, masks = get_trajectory(data, sim_steps="all")
         total_steps = len(trajectories["1"])  # assume all players have same number of steps
-
+       
+        player_ids = sorted(int(k) for k in trajectories.keys())
+        cmap = plt.cm.get_cmap('Dark2', len(player_ids))
+        player_colors = {pid: cmap(i) for i, pid in enumerate(player_ids)}
+       
         # Choose 5 equally spaced step indices.
         step_indices = np.array([t * 10 - 1 for t in range(1, 6)], dtype=int)
         for col, step in enumerate(step_indices):
@@ -205,7 +219,7 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
             # Plot each player's trajectory (from time=0 to current 'step')
             for p_str, traj in trajectories.items():
                 p_id = int(p_str)
-                
+                p_color = player_colors[p_id]
                 # Determine current marker color based on mask at the current time step.
                 if step < len(masks) and masks[step][p_id - 1] == 1:
                     current_color = color_ego if p_id == 1 else color_other_on
@@ -224,13 +238,36 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
                         segment_color = color_ego if p_id == 1 else color_other_off
                     x_vals = [traj[idx][0], traj[idx+1][0]]
                     y_vals = [traj[idx][1], traj[idx+1][1]]
-                    ax.plot(x_vals, y_vals, color=segment_color, linewidth=1.5)
+                    ax.plot(x_vals, y_vals, color=segment_color, linewidth=2)
                 
                 # Plot the current position marker.
                 if step < len(traj):
                     ax.plot(traj[step][0], traj[step][1],
-                            marker='o', color=current_color, markersize=8)
+                            marker='o', color=current_color, markersize=12)
             
+                # 1) Annotate the player‐ID at the current position
+                if step < len(traj):
+                    ax.text(
+                        traj[step][0], traj[step][1],
+                        f"$^{{{p_id}}}$",
+                        fontsize=16, color=p_color,
+                        ha='left', va='bottom'
+                    )
+
+                # plot the goal with the same unique color
+                gx, gy = goals[p_str]
+                ax.plot(
+                    gx, gy,
+                    marker='*', markersize=16,
+                    color=p_color
+                )
+                ax.text(
+                    gx, gy,
+                    f"$^{{{p_id}}}$",
+                    fontsize=16, color=p_color,
+                    ha='left', va='bottom'
+                )
+                
             # Set the axis limits and equal aspect
             ax.set_xlim(x_lim)
             ax.set_ylim(y_lim)
@@ -269,5 +306,7 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
                 ax.set_ylabel("")
                 ax.tick_params(axis='y', which='both', left=False, right=False)
 
+    # Adjust spacing between columns
+    plt.subplots_adjust(wspace=0)
     plt.savefig(f"nn_traj_vis\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
     plt.close(fig)  # Close the figure to free memory
