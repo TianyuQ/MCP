@@ -198,7 +198,7 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
         total_steps = len(trajectories["1"])  # assume all players have same number of steps
 
         # Choose 5 equally spaced step indices.
-        step_indices = np.array([t * 10 for t in range(1, 6)], dtype=int)
+        step_indices = np.array([t * 10 - 1 for t in range(1, 6)], dtype=int)
         for col, step in enumerate(step_indices):
             ax = axes[row, col]
             
