@@ -8,7 +8,7 @@ plt.rcParams.update({
     'mathtext.fontset': 'cm',                 # use Computer Modern math
     'font.family': 'serif',
     'font.serif': ['Computer Modern Roman', 'DejaVu Serif'],
-    'axes.labelsize': 12,
+    'axes.labelsize': 18,                   
     'axes.titlesize': 14,
     'xtick.labelsize': 10,
     'ytick.labelsize': 10,
@@ -16,7 +16,6 @@ plt.rcParams.update({
     'axes.linewidth': 1.0,
     'figure.dpi': 300
 })
-
 
 def get_trajectory(data, sim_steps="all"):
     r"""
@@ -69,7 +68,9 @@ def clean_method_name_for_legend(method, option):
             return "Cost Evolution"
     else:
         # For the threshold option, keep the parameter but simplify the method name
-        if "Neural Network Threshold" in method and "[" in method:
+        if "Neural Network Partial" in method and "[" in method:
+            return "PSN-Partial" + method[method.index('['):]
+        elif "Neural Network Threshold" in method and "[" in method:
             return "PSN" + method[method.index('['):]  # Keep the parameter part
         elif "Distance Threshold" in method and "[" in method:
             return "Distance" + method[method.index('['):]  # Keep the parameter part
@@ -167,8 +168,8 @@ for i, m in enumerate(methods):
 # 4) Formatting
 ax.set_xticks(x)
 ax.set_xticklabels(mask_values)
-ax.set_xlabel('Mask sum (number of players selected)')
-ax.set_ylabel('Percentage of all masks (\%)')
+ax.set_xlabel('Number of Players')
+ax.set_ylabel('Percentage of all interactions (%)')
 ax.set_ylim(0, max(max(v) for v in percent.values())*1.1)
 
 # clean spines & add light grid
@@ -176,8 +177,8 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.grid(axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
 
-ax.legend(title='Method', frameon=False)
-ax.set_title('Distribution of Mask‑Sum by Method')
+ax.legend(frameon=False)
+# ax.set_title('Distribution of Mask‑Sum by Method')
 
 plt.tight_layout()
 
