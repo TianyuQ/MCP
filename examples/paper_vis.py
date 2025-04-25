@@ -42,28 +42,74 @@ def get_trajectory(data, sim_steps="all"):
     masks = data["Player 1 Mask"]
     return trajectories, goals, masks
 
+def clean_method_name_for_legend(method, option):
+    # Replace specific parts of the method name with simplified names for the legend
+    if option != "threshold":
+        if "Neural Network Partial" in method:
+            return "PSN-Partial"  # For Neural Network Partial methods, return 'PSN-Partial' for the legend
+        elif "Neural Network" in method:
+            return "PSN-Full"  # For Neural Network methods, return 'PSN' for the legend
+        elif "Distance Threshold" in method:
+            return "Distance"  # For Distance Threshold, return 'Distance' for the legend
+        elif "Nearest Neighbor" in method:
+            return "Distance"  # For Nearest Neighbor, return 'Distance' for the legend
+        elif "Control Barrier Function" in method:
+            return "CBF"  # For Control Barrier Function, return 'CBF' for the legend
+        elif "Barrier Function" in method:
+            return "BF"  # For Barrier Function, return 'BF' for the legend
+        elif "Jacobian" in method:
+            return "Jacobian"
+        elif "Hessian" in method:
+            return "Hessian"
+        elif "Cost Evolution" in method:
+            return "Cost Evolution"
+    else:
+        # For the threshold option, simplify the method name without keeping the parameter part
+        if "Neural Network Partial" in method:
+            return "PSN-Partial"
+        elif "Neural Network Threshold" in method:
+            return "PSN-Full-th"
+        elif "Distance Threshold" in method:
+            return "Distance"
+        elif "Nearest Neighbor" in method:
+            return "Distance"
+        elif "Control Barrier Function" in method:
+            return "CBF"
+        elif "Barrier Function" in method:
+            return "BF"
+        elif "Jacobian" in method:
+            return "Jacobian"
+        elif "Hessian" in method:
+            return "Hessian"
+        elif "Cost Evolution" in method:
+            return "Cost Evolution"
+
+    return method  # Return the original method name if no change is needed
+
 ###############################################################################
 #  CONFIGURATION
 ###############################################################################
 # List of method files (each file corresponds to one row)
 
-for scenario_id in range(160, 192):  # Loop over the range of scenarios
+for scenario_id in range(160, 161):  # Loop over the range of scenarios
     methods = [
         f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
-        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Threshold]_[0.5].json",
+        #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Threshold]_[0.5].json",
         f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Rank]_[2].json",
-        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Rank]_[2].json", 
+        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[All]_[1].json"
+        #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Rank]_[2].json", 
     ]
 
     n_rows = len(methods)  # each method is one row
-    n_cols = 4             # NUMBER OF COLUMNS
+    n_cols = 5             # NUMBER OF COLUMNS
 
     # Create figure with shared axes so that all subplots have the same x and y scales.
     fig, axes = plt.subplots(
         n_rows, n_cols,
         figsize=(15, 4.5 * n_rows),
         sharex=True,
-        sharey=True)
+        sharey=True
+        )
     if n_rows == 1:
         axes = np.array([axes])
     if n_cols == 1:
@@ -98,6 +144,7 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
 
     # Time labels for bottom row (formatted in math mode)
     time_labels = [
+        r"$t=1\,\mathrm{s}$",
         r"$t=2\,\mathrm{s}$",
         r"$t=3\,\mathrm{s}$",
         r"$t=4\,\mathrm{s}$",
@@ -110,18 +157,18 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
     color_other_off= "#99FF99"  # light green for Other (mask inactive)
 
     blue_ego    = Line2D([], [], color=color_ego, marker='o', markersize=8,
-                         linewidth=2, label=r"$\mathbf{Ego}$")
+                         linewidth=2, label=r"$\text{Ego \ Player}$")
     red_other   = Line2D([], [], color=color_other_on, marker='o', markersize=8,
-                         linewidth=2, label=r"$\mathbf{Included \ in \ Game}$")
+                         linewidth=2, label=r"$\text{Included \ Player(s)}$")
     green_other = Line2D([], [], color=color_other_off, marker='o', markersize=8,
-                         linewidth=2, label=r"$\mathbf{Excluded \ from \ Game}$")
+                         linewidth=2, label=r"$\text{Excluded \ Player(s)}$")
 
     fig.legend(
         handles=[blue_ego, red_other, green_other],
         loc='upper center',
         bbox_to_anchor=(0.5, .95),  # Move legend closer to the plots
         ncol=3,
-        fontsize=12
+        fontsize=18
     )
 
     # MAIN PLOTTING LOOP
@@ -138,14 +185,19 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
             method_label = parts[2].replace("]", "")
         else:
             method_label = name_no_ext
+        
+        if "Threshold" in method_label:
+            method_label = clean_method_name_for_legend(method_label, "threshold")
+        else:
+            method_label = clean_method_name_for_legend(method_label, "no_threshold")
         # Wrap the method label in mathmode for bold formatting.
-        method_label = r"$\mathbf{" + method_label + r"}$"
+        method_label = r"$\text{" + method_label + r"}$"
 
         trajectories, goals, masks = get_trajectory(data, sim_steps="all")
         total_steps = len(trajectories["1"])  # assume all players have same number of steps
 
         # Choose 5 equally spaced step indices.
-        step_indices = np.array([t * 10 for t in range(2, 6)], dtype=int)
+        step_indices = np.array([t * 10 for t in range(1, 6)], dtype=int)
         for col, step in enumerate(step_indices):
             ax = axes[row, col]
             
@@ -160,7 +212,8 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
                     current_color = color_ego if p_id == 1 else color_other_off
                 
                 # Plot full trajectory history from the beginning up to 'step'
-                start_idx = 0 # plot all previous steps
+                #start_idx = 0 # plot all previous steps
+                start_idx = max(0, step - 9)
                 for idx in range(start_idx, step):
                     if idx + 1 >= len(traj):
                         break
@@ -192,7 +245,7 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
                         xycoords='axes fraction',
                         ha='center',
                         va='center',
-                        fontsize=11
+                        fontsize=18
                     )
             else:
                 ax.set_xticklabels([])
@@ -207,14 +260,14 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
                     ha='center',
                     va='center',
                     rotation=90,
-                    fontsize=12,
-                    fontweight='bold'
+                    fontsize=18,
+                   # fontweight='bold'
                 )
             else:
                 ax.set_yticklabels([])
                 ax.set_ylabel("")
 
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.05, wspace=0.05)
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0, wspace=0)
+    #plt.tight_layout()
     plt.savefig(f"nn_traj_vis\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
     plt.close(fig)  # Close the figure to free memory
