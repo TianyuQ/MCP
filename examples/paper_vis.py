@@ -91,7 +91,7 @@ def clean_method_name_for_legend(method, option):
 ###############################################################################
 # List of method files (each file corresponds to one row)
 
-for scenario_id in range(160, 161):  # Loop over the range of scenarios
+for scenario_id in range(160, 192):  # Loop over the range of scenarios
     methods = [
         f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
         #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Threshold]_[0.5].json",
@@ -239,12 +239,7 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
                     x_vals = [traj[idx][0], traj[idx+1][0]]
                     y_vals = [traj[idx][1], traj[idx+1][1]]
                     ax.plot(x_vals, y_vals, color=segment_color, linewidth=2)
-                
-                # Plot the current position marker.
-                if step < len(traj):
-                    ax.plot(traj[step][0], traj[step][1],
-                            marker='o', color=current_color, markersize=12)
-            
+
                 # 1) Annotate the player‐ID at the current position
                 if step < len(traj):
                     ax.text(
@@ -266,7 +261,14 @@ for scenario_id in range(160, 161):  # Loop over the range of scenarios
                     f"$^{{{p_id}}}$",
                     fontsize=16, color=p_color,
                     ha='left', va='bottom'
-                )
+                )       
+
+                # Plot the current position marker.
+                if step < len(traj):
+                    ax.plot(traj[step][0], traj[step][1],
+                            marker='o', color=current_color, markersize=12)
+            
+
                 
             # Set the axis limits and equal aspect
             ax.set_xlim(x_lim)
