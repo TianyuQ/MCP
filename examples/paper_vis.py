@@ -12,7 +12,7 @@ plt.rcParams['font.serif'] = ['Computer Modern Roman', 'DejaVu Serif']
 plt.rcParams['font.size'] = 11
 
 # Number of players (adjust as needed)
-N = 4
+N = 10
 
 def get_trajectory(data, sim_steps="all"):
     r"""
@@ -48,7 +48,7 @@ def clean_method_name_for_legend(method, option):
         if "Neural Network Partial" in method:
             return "PSN-Partial"  # For Neural Network Partial methods, return 'PSN-Partial' for the legend
         elif "Neural Network" in method:
-            return "PSN-Full"  # For Neural Network methods, return 'PSN' for the legend
+            return "PSN-Full-Rank[2]"  # For Neural Network methods, return 'PSN' for the legend
         elif "Distance Threshold" in method:
             return "Distance"  # For Distance Threshold, return 'Distance' for the legend
         elif "Nearest Neighbor" in method:
@@ -68,7 +68,7 @@ def clean_method_name_for_legend(method, option):
         if "Neural Network Partial" in method:
             return "PSN-Partial"
         elif "Neural Network Threshold" in method:
-            return "PSN-Full-th"
+            return "PSN-Full-th[0.5]"
         elif "Distance Threshold" in method:
             return "Distance"
         elif "Nearest Neighbor" in method:
@@ -91,12 +91,12 @@ def clean_method_name_for_legend(method, option):
 ###############################################################################
 # List of method files (each file corresponds to one row)
 
-for scenario_id in range(160, 192):  # Loop over the range of scenarios
+for scenario_id in range(1, 2):  # Loop over the range of scenarios
     methods = [
-        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
+        f"data_ped\\trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
         #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Threshold]_[0.5].json",
-        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Rank]_[2].json",
-        f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[All]_[1].json"
+        f"data_ped\\trajectories_[{scenario_id}]_[Neural Network Rank]_[5].json",
+        f"data_ped\\trajectories_[{scenario_id}]_[All]_[1].json"
         #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Rank]_[2].json", 
     ]
 
@@ -142,7 +142,7 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
     # Calculate limits with some padding
     x_min, x_max = min(all_x), max(all_x)
     y_min, y_max = min(all_y), max(all_y)
-    padding = 0.5  # Add some padding to the limits
+    padding = 1.5  # Add some padding to the limits
     x_range = x_max - x_min
     y_range = y_max - y_min
     max_range = max(x_range, y_range)  # Ensure aspect ratio remains the same
@@ -159,7 +159,7 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
         r"$t=2\,\mathrm{s}$",
         r"$t=3\,\mathrm{s}$",
         r"$t=4\,\mathrm{s}$",
-        r"$t=5\,\mathrm{s}$",
+        r"$\text{Full Trajectory}$",
     ]
 
     # LEGEND (using lighter colors)
@@ -168,11 +168,11 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
     color_other_off= "#99FF99"  # light green for Other (mask inactive)
 
     blue_ego    = Line2D([], [], color=color_ego, marker='o', markersize=8,
-                         linewidth=2, label=r"$\text{Ego \ Player}$")
+                         linewidth=2, label=r"$\text{Ego\ Player}$")
     red_other   = Line2D([], [], color=color_other_on, marker='o', markersize=8,
-                         linewidth=2, label=r"$\text{Included \ Player(s)}$")
+                         linewidth=2, label=r"$\text{Included\ Player(s)}$")
     green_other = Line2D([], [], color=color_other_off, marker='o', markersize=8,
-                         linewidth=2, label=r"$\text{Excluded \ Player(s)}$")
+                         linewidth=2, label=r"$\text{Excluded\ Player(s)}$")
 
     fig.legend(
         handles=[blue_ego, red_other, green_other],
@@ -208,37 +208,52 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
         total_steps = len(trajectories["1"])  # assume all players have same number of steps
        
         player_ids = sorted(int(k) for k in trajectories.keys())
-        cmap = plt.cm.get_cmap('Dark2', len(player_ids))
+        cmap = plt.cm.get_cmap('tab10', len(player_ids))
         player_colors = {pid: cmap(i) for i, pid in enumerate(player_ids)}
        
         # Choose 5 equally spaced step indices.
         step_indices = np.array([t * 10 - 1 for t in range(1, 6)], dtype=int)
+        #step_indices = np.array([19, 39, 59, 79, total_steps - 1], dtype=int)
+
+        step_indices[-1] = total_steps - 1 # last step will show full trajectory
         for col, step in enumerate(step_indices):
             ax = axes[row, col]
             
             # Plot each player's trajectory (from time=0 to current 'step')
+            #if col == 4:
             for p_str, traj in trajectories.items():
                 p_id = int(p_str)
                 p_color = player_colors[p_id]
+
                 # Determine current marker color based on mask at the current time step.
-                if step < len(masks) and masks[step][p_id - 1] == 1:
+                mask_step = min(step, len(masks) - 1)
+                if masks[mask_step][p_id - 1] == 1:
                     current_color = color_ego if p_id == 1 else color_other_on
                 else:
                     current_color = color_ego if p_id == 1 else color_other_off
                 
                 # Plot full trajectory history from the beginning up to 'step'
                 #start_idx = 0 # plot all previous steps
-                start_idx = max(0, step - 9)
-                for idx in range(start_idx, step):
+                if col == n_cols - 1:
+                    # for the final column: draw everything from the very start
+                    start_idx, end_idx = 0, total_steps - 1
+                else:
+                    # otherwise, just the last 10 time‐steps
+                    start_idx = max(0, step - 9)
+                    end_idx   = step
+
+                for idx in range(start_idx, end_idx):
                     if idx + 1 >= len(traj):
                         break
-                    if idx < len(masks) and masks[idx][p_id - 1] == 1:
+                    mask_idx = min(idx, len(masks) - 1)
+                    if masks[mask_idx][p_id - 1] == 1:
                         segment_color = color_ego if p_id == 1 else color_other_on
                     else:
                         segment_color = color_ego if p_id == 1 else color_other_off
                     x_vals = [traj[idx][0], traj[idx+1][0]]
                     y_vals = [traj[idx][1], traj[idx+1][1]]
                     ax.plot(x_vals, y_vals, color=segment_color, linewidth=2)
+
 
                 # 1) Annotate the player‐ID at the current position
                 if step < len(traj):
@@ -279,14 +294,24 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
             # Only bottom row subplots show the x-axis label and tick labels.
             if row == n_rows - 1:
                 if col < len(time_labels):
-                    ax.annotate(
-                        time_labels[col],
-                        xy=(0.5, -0.15),
-                        xycoords='axes fraction',
-                        ha='center',
-                        va='center',
-                        fontsize=18
-                    )
+                    if col == n_cols - 1:
+                        ax.annotate(
+                            r"$\text{Full Trajectory}$",
+                            xy=(0.5, -0.15),
+                            xycoords='axes fraction',
+                            ha='center',
+                            va='bottom',
+                            fontsize=18
+                        )
+                    else:
+                        ax.annotate(
+                            time_labels[col],
+                            xy=(0.91, -0.15),
+                            xycoords='axes fraction',
+                            ha='left',
+                            va='bottom',
+                            fontsize=18
+                        )
             else:
                 ax.set_xticklabels([])
                 ax.set_xlabel("")
@@ -310,5 +335,5 @@ for scenario_id in range(160, 192):  # Loop over the range of scenarios
 
     # Adjust spacing between columns
     plt.subplots_adjust(wspace=0)
-    plt.savefig(f"nn_traj_vis\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
+    plt.savefig(f"nn_traj_vis_ped\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
     plt.close(fig)  # Close the figure to free memory
