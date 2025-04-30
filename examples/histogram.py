@@ -9,10 +9,9 @@ plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['Computer Modern Roman', 'DejaVu Serif'],
     'axes.labelsize': 18,                   
-    'axes.titlesize': 14,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
-    'legend.fontsize': 10,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.fontsize': 17,
     'axes.linewidth': 1.0,
     'figure.dpi': 300
 })
@@ -67,25 +66,25 @@ def clean_method_name_for_legend(method, option):
         elif "Cost Evolution" in method and "[" in method:
             return "Cost Evolution"
     else:
-        # For the threshold option, keep the parameter but simplify the method name
-        if "Neural Network Partial" in method and "[" in method:
-            return "PSN-Partial" + method[method.index('['):]
-        elif "Neural Network Threshold" in method and "[" in method:
-            return "PSN" + method[method.index('['):]  # Keep the parameter part
-        elif "Distance Threshold" in method and "[" in method:
-            return "Distance" + method[method.index('['):]  # Keep the parameter part
-        elif "Nearest Neighbor" in method and "[" in method:
-            return "Distance" + method[method.index('['):]  # Keep the parameter part
-        elif "Control Barrier Function" in method and "[" in method:
-            return "CBF" + method[method.index('['):]  # Keep the parameter part
-        elif "Barrier Function" in method and "[" in method:
-            return "BF" + method[method.index('['):]  # Keep the parameter part
-        elif "Jacobian" in method and "[" in method:
-            return "Jacobian" + method[method.index('['):]  # Keep the parameter part
-        elif "Hessian" in method and "[" in method:
-            return "Hessian" + method[method.index('['):]  # Keep the parameter part
-        elif "Cost Evolution" in method and "[" in method:
-            return "Cost Evolution" + method[method.index('['):]  # Keep the parameter part
+        # For the threshold option, simplify the method name without keeping the parameter part
+        if "Neural Network Partial" in method:
+            return "PSN-Partial"
+        elif "Neural Network Threshold" in method:
+            return "PSN"
+        elif "Distance Threshold" in method:
+            return "Distance"
+        elif "Nearest Neighbor" in method:
+            return "Distance"
+        elif "Control Barrier Function" in method:
+            return "CBF"
+        elif "Barrier Function" in method:
+            return "BF"
+        elif "Jacobian" in method:
+            return "Jacobian"
+        elif "Hessian" in method:
+            return "Hessian"
+        elif "Cost Evolution" in method:
+            return "Cost Evolution"
 
     return method  # Return the original method name if no change is needed
 
@@ -153,7 +152,7 @@ for i, m in enumerate(methods):
         x + (i-1)*width,
         percent[m],
         width,
-        label=m,
+        label=clean_method_name_for_legend(m, "threshold"),
         color=color_map[m],
     )
     # annotate each bar with its value
