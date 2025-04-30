@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 import os
+import re
 
 plt.rcParams.update({
     'text.usetex': False,                     # turn off external TeX
@@ -45,35 +46,34 @@ def get_trajectory(data, sim_steps="all"):
     return trajectories, goals, masks
 
 def clean_method_name_for_legend(method, option):
-    # Replace specific parts of the method name with simplified names for the legend
+    """
+    Simplify the method name for the legend.
+    If option == "threshold", also extract and show the 'th=…' value.
+    """
+    # try to pull out the threshold value (e.g. '0.5') if present
+    thr_match = re.search(r'th=([0-9.]+)', method)
+    thr = thr_match.group(1) if thr_match else None
+
+    if option == "threshold" and thr is not None:
+        # threshold‐style labels
+        if "Neural Network Partial" in method:
+            base = "PSN-Partial"
+        elif "Neural Network Threshold" in method:
+            base = "PSN-Full"
+        elif "Distance Threshold" in method:
+            base = "Distance"
+        else:
+            return method  # unknown pattern, fall back
+
+        return f"{base} [{thr}]"
+
+    # non-threshold or no match: keep original logic (or just return method)
     if option != "threshold":
-        if "Neural Network Partial" in method and "[" in method:
-            return "PSN-Partial"  # For Neural Network Partial methods, return 'PSN-Partial' for the legend
-        elif "Neural Network" in method and "[" in method:
-            return "PSN-Full"  # For Neural Network methods, return 'PSN' for the legend
-        elif "Distance Threshold" in method and "[" in method:
-            return "Distance"  # For Distance Threshold, return 'Distance' for the legend
-        elif "Nearest Neighbor" in method and "[" in method:
-            return "Distance"  # For Nearest Neighbor, return 'Distance' for the legend
-        elif "Control Barrier Function" in method and "[" in method:
-            return "CBF"  # For Control Barrier Function, return 'CBF' for the legend
-        elif "Barrier Function" in method and "[" in method:
-            return "BF"  # For Barrier Function, return 'BF' for the legend
-        elif "Jacobian" in method and "[" in method:
-            return "Jacobian"
-        elif "Hessian" in method and "[" in method:
-            return "Hessian"
-        elif "Cost Evolution" in method and "[" in method:
-            return "Cost Evolution"
-    else:
-        # For the threshold option, simplify the method name without keeping the parameter part
         if "Neural Network Partial" in method:
             return "PSN-Partial"
-        elif "Neural Network Threshold" in method:
-            return "PSN"
-        elif "Distance Threshold" in method:
-            return "Distance"
-        elif "Nearest Neighbor" in method:
+        elif "Neural Network" in method:
+            return "PSN-Full"
+        elif "Distance Threshold" in method or "Nearest Neighbor" in method:
             return "Distance"
         elif "Control Barrier Function" in method:
             return "CBF"
@@ -86,7 +86,8 @@ def clean_method_name_for_legend(method, option):
         elif "Cost Evolution" in method:
             return "Cost Evolution"
 
-    return method  # Return the original method name if no change is needed
+    # fallback
+    return method
 
 # ADJUSTABLE PARAMETERS. 
 N=4
@@ -97,7 +98,9 @@ total = num_scenarios * 50
 
 scenario_idx = np.arange(scenario_start_idx, scenario_start_idx + num_scenarios, 1)
 
-methods = ['Neural Network Threshold th=0.5', 'Neural Network Partial Threshold th=0.5',  'Distance Threshold th=2.0'] # the syntax here is important!
+methods = ['Neural Network Threshold th=0.1','Neural Network Threshold th=0.3','Neural Network Threshold th=0.5',\
+           'Neural Network Partial Threshold th=0.1', 'Neural Network Partial Threshold th=0.3','Neural Network Partial Threshold th=0.5', \
+            'Distance Threshold th=1.5', 'Distance Threshold th=2.0', 'Distance Threshold th=2.5'] # the syntax here is important!
 method_names = [methods[i][:-7] for i in range(len(methods))]
 
 method_sums = {}
@@ -135,26 +138,37 @@ percent = {
 }
 
 color_map = {
-    methods[2]:            'tab:orange',  # matches Distance [2]
-    methods[1]:      'tab:brown',   # matches PSN‑Full [0.5]
-    methods[0]: 'tab:olive' # matches PSN‑Partial [0.5]
+    methods[0]: 'tab:blue',    # PSN‑Full-th-0.1
+    methods[1]: 'tab:cyan',    # PSN‑Full-th-0.3
+    methods[2]: 'tab:olive',   # PSN‑Full-th-0.5
+    methods[3]: 'tab:orange',  # PSN‑Partial-th-0.1
+    methods[4]: 'tab:purple',  # PSN‑Partial-th-0.3
+    methods[5]: 'tab:brown',   # PSN‑Partial-th-0.5
+    methods[6]: 'tab:green',   # Distance-th-1.5
+    methods[7]: 'tab:pink',    # Distance-th-2.0
+    methods[8]: 'tab:red'      # Distance-th-2.5
 }
 
 # ——————————————
 # 3) Plot
 x = np.arange(len(mask_values))
-width = 0.25
+
+n_methods = len(methods)
+bar_width = 0.5/n_methods
 
 fig, ax = plt.subplots(figsize=(10,5))
 
 for i, m in enumerate(methods):
-    bars = ax.bar(
-        x + (i-1)*width,
+    # offset each bar so the cluster is centered at x
+    offset = (i - (n_methods-1)/2) * bar_width
+    ax.bar(
+        x + offset,
         percent[m],
-        width,
+        bar_width,
         label=clean_method_name_for_legend(m, "threshold"),
-        color=color_map[m],
+        color=color_map[m]
     )
+
     # annotate each bar with its value
     # ax.bar_label(
     #     bars,
@@ -176,14 +190,15 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.grid(axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
 
-ax.legend(frameon=False)
+ax.legend(frameon=False, ncol=3)
 # ax.set_title('Distribution of Mask‑Sum by Method')
 
 plt.tight_layout()
 
 # ——————————————
 # 5) Export
-plt.savefig('mask_sum_distribution.pdf', format='pdf', bbox_inches='tight', dpi=1000)
+
+plt.savefig(f'mask_sum_distribution_{N}.pdf', format='pdf', bbox_inches='tight', dpi=1000)
 
 
 # histogram:
