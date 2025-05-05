@@ -3,6 +3,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from animate import animate_method
 
 # Use Matplotlib's built-in mathtext (no external LaTeX required)
 plt.rcParams['text.usetex'] = False
@@ -335,5 +336,16 @@ for scenario_id in range(1, 2):  # Loop over the range of scenarios
 
     # Adjust spacing between columns
     plt.subplots_adjust(wspace=0)
-    plt.savefig(f"nn_traj_vis_ped\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
+    #plt.savefig(f"nn_traj_vis_ped\\trajectories_grid_scenario_{scenario_id}.pdf", dpi=1000, bbox_inches='tight')
     plt.close(fig)  # Close the figure to free memory
+
+    for method_file in methods:
+        method_file_name = os.path.basename(method_file)
+        anim = animate_method(
+            method_file,
+            N=N,
+            get_trajectory=get_trajectory,
+            figsize=(6,6),
+            interval=50,
+            save_path=f'animations/{method_file_name.replace(".json", ".mp4")}'
+        )
