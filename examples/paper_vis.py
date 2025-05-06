@@ -92,13 +92,14 @@ def clean_method_name_for_legend(method, option):
 ###############################################################################
 # List of method files (each file corresponds to one row)
 
-for scenario_id in range(1, 2):  # Loop over the range of scenarios
+for scenario_id in range(1,2):  # Loop over the range of scenarios
     methods = [
-        f"data_ped\\trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
-        #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Threshold]_[0.5].json",
+        #f"data_test_{N} _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json",
+        #f"data_test_{N} _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Rank]_[2].json",
+        #f"data_test_{N} _30\\receding_horizon_trajectories_[{scenario_id}]_[All]_[1].json"
+        f"data_ped\\trajectories_[{scenario_id}]_[All]_[1].json",
         f"data_ped\\trajectories_[{scenario_id}]_[Neural Network Rank]_[5].json",
-        f"data_ped\\trajectories_[{scenario_id}]_[All]_[1].json"
-        #f"data_test_4 _30\\receding_horizon_trajectories_[{scenario_id}]_[Neural Network Partial Rank]_[2].json", 
+        f"data_ped\\trajectories_[{scenario_id}]_[Neural Network Threshold]_[0.5].json"
     ]
 
     n_rows = len(methods)  # each method is one row
@@ -346,6 +347,6 @@ for scenario_id in range(1, 2):  # Loop over the range of scenarios
             N=N,
             get_trajectory=get_trajectory,
             figsize=(6,6),
-            interval=50,
+            interval=100/1.5,
             save_path=f'animations/{method_file_name.replace(".json", ".mp4")}'
         )
